@@ -1,18 +1,53 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.blarc.sopsintellijplugin</id>
-    <name>sops-intellij-plugin</name>
-    <vendor>blarc</vendor>
+    <id>com.github.blarc.sops-intellij-plugin</id>
+    <name>SOPS</name>
+    <vendor email="" url="https://github.com/Blarc">Blarc</vendor>
+
+    <description><![CDATA[
+        <p>SOPS IntelliJ plugin allows you to decrypt and encrypt files encrypted with SOPS inside your IDE.</p>
+        <h3>Features</h3>
+        <ul>
+            <li>Automatically decrypt the content of SOPS files</li>
+            <li>Show encrypted content as preview</li>
+            <li>On save, encrypt the contents, if the file has changed</li>
+        </ul>
+        <h3>Usage</h3>
+        <p>To get started, install the plugin and set path to SOPS executable in plugin's settings:
+        <br/>
+        Settings > Tools > SOPS</p>
+        <h3>Troubleshooting</h3>
+        <p>I would love to hear from you if you have any issues or feature requests. Please report them
+        <a href="https://github.com/Blarc/sops-intellij-plugin/issues">here</a>.</p>
+    ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <resource-bundle>messages.SopsBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.blarc.sopsintellijplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.github.blarc.sops.intellij.plugin.settings.AppSettingsConfigurable"
+                key="name"
+        />
+
+        <fileEditorProvider
+                id="sopsEditorProvider"
+                implementation="com.github.blarc.sops.intellij.plugin.providers.SopsEditorProvider"
+                order="first"
+        />
+
+        <editorNotificationProvider
+                implementation="com.github.blarc.sops.intellij.plugin.providers.SopsEditorNotificationsProvider"
+                id="Sops.SopsEditorNotificationsProvider"/>
+        />
+
     </extensions>
 
-    <applicationListeners>
-        <listener class="com.github.blarc.sopsintellijplugin.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
-    </applicationListeners>
+    <projectListeners>
+        <listener class="com.github.blarc.sops.intellij.plugin.listener.SopsSaveActionListener"
+                  topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+    </projectListeners>
 </idea-plugin>
