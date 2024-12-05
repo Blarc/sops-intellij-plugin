@@ -1,24 +1,19 @@
-<div style="text-align: center">
-    <a href="https://plugins.jetbrains.com/plugin/21335-ai-commits">
+<div align="center">
+    <a href="https://plugins.jetbrains.com/plugin/26012-sops">
         <img src="./src/main/resources/META-INF/pluginIcon.svg" width="200" height="200" alt="logo"/>
     </a>
 </div>
-<h1 style="text-align: center">SOPS IntelliJ Plugin</h1>
-<p style="text-align: center">SOPS for IntelliJ based IDEs/Android Studio.</p>
+<h1 align="center">SOPS IntelliJ Plugin</h1>
+<p align="center">SOPS for IntelliJ based IDEs/Android Studio.</p>
 
-[//]: # (<p align="center">)
+<p align="center">
+<a href="https://actions-badge.atrox.dev/blarc/sops-intellij-plugin/goto?ref=main"><img alt="Build Status" src="https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fblarc%2Fsops-intellij-plugin%2Fbadge%3Fref%3Dmain&style=popout-square" /></a>
+<a href="https://plugins.jetbrains.com/plugin/26012-sops"><img src="https://img.shields.io/jetbrains/plugin/r/stars/26012?style=flat-square"></a>
+<a href="https://plugins.jetbrains.com/plugin/26012-sops"><img src="https://img.shields.io/jetbrains/plugin/d/26012-sops.svg?style=flat-square"></a>
+<a href="https://plugins.jetbrains.com/plugin/26012-sops"><img src="https://img.shields.io/jetbrains/plugin/v/26012-sops.svg?style=flat-square"></a>
+</p>
 
-[//]: # (<a href="https://actions-badge.atrox.dev/blarc/sops-intellij-plugin/goto?ref=main"><img alt="Build Status" src="https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fblarc%2Fsops-intellij-plugin%2Fbadge%3Fref%3Dmain&style=popout-square" /></a>)
-
-[//]: # (<a href="https://plugins.jetbrains.com/plugin/21335-ai-commits"><img src="https://img.shields.io/jetbrains/plugin/r/stars/21335?style=flat-square"></a>)
-
-[//]: # (<a href="https://plugins.jetbrains.com/plugin/21335-ai-commits"><img src="https://img.shields.io/jetbrains/plugin/d/21335-ai-commits.svg?style=flat-square"></a>)
-
-[//]: # (<a href="https://plugins.jetbrains.com/plugin/21335-ai-commits"><img src="https://img.shields.io/jetbrains/plugin/v/21335-ai-commits.svg?style=flat-square"></a>)
-
-[//]: # (</p>)
-
-[//]: # (<br>)
+<br>
 
 - [Description](#description)
 - [Features](#features)
@@ -41,6 +36,7 @@ SOPS IntelliJ plugin allows you to decrypt and encrypt files encrypted with SOPS
 [//]: # (## Demo)
 
 [//]: # ()
+
 [//]: # (<picture>)
 
 [//]: # (  <source media="&#40;prefers-color-scheme: dark&#41;" srcset="./screenshots/plugin-dark.gif">)
@@ -58,24 +54,18 @@ DataSpell, Code With Me
 
 ## Install
 
-[//]: # (<a href="https://plugins.jetbrains.com/embeddable/install/21335">)
+<a href="https://plugins.jetbrains.com/embeddable/install/26012">
 
-[//]: # (<img src="https://user-images.githubusercontent.com/12044174/123105697-94066100-d46a-11eb-9832-338cdf4e0612.png" width="300"/>)
+<img src="https://user-images.githubusercontent.com/12044174/123105697-94066100-d46a-11eb-9832-338cdf4e0612.png" width="300"/>
 
-[//]: # (</a>)
+</a>
 
-[//]: # ()
-[//]: # (Or you could install it inside your IDE:)
 
-[//]: # ()
-[//]: # (For Windows & Linux: <kbd>File</kbd> > <kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search)
+Or you could install it inside your IDE:
 
-[//]: # (for "AI Commits"</kbd> > <kbd>Install Plugin</kbd> > <kbd>Restart IntelliJ IDEA</kbd>)
+For Windows & Linux: <kbd>File</kbd> > <kbd>Settings</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "SOPS"</kbd> > <kbd>Install Plugin</kbd> > <kbd>Restart IntelliJ IDEA</kbd>
 
-[//]: # ()
-[//]: # (For Mac: <kbd>IntelliJ IDEA</kbd> > <kbd>Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search)
-
-[//]: # (for "AI Commits"</kbd> > <kbd>Install Plugin</kbd>  > <kbd>Restart IntelliJ IDEA</kbd>)
+For Mac: <kbd>IntelliJ IDEA</kbd> > <kbd>Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "SOPS"</kbd> > <kbd>Install Plugin</kbd>  > <kbd>Restart IntelliJ IDEA</kbd>
 
 ### Installation from zip
 
@@ -94,8 +84,8 @@ DataSpell, Code With Me
 
 * Star the repository
 * [Buy me a coffee](https://ko-fi.com/blarc)
-* [Rate the plugin](https://plugins.jetbrains.com/plugin/21335-ai-commits)
-* [Share the plugin](https://plugins.jetbrains.com/plugin/21335-ai-commits)
+* [Rate the plugin](https://plugins.jetbrains.com/plugin/26012-sops)
+* [Share the plugin](https://plugins.jetbrains.com/plugin/26012-sops)
 * [Sponsor me](https://github.com/sponsors/Blarc)
 
 ## Change log
