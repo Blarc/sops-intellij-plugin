@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,7 +32,7 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        return SopsEditor.create(file, project)
+        return SopsEditor.create(LightVirtualFile(), file, project)
     }
 
     override fun getEditorTypeId(): String {
@@ -47,8 +48,10 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
         encryptedEditor: TextEditor,
     ) : TextEditorWithPreview(decryptedEditor, encryptedEditor) {
 
-        val originalEncryptedText = (previewEditor as TextEditor).editor.document.text
+        var originalEncryptedText = (previewEditor as TextEditor).editor.document.text
         var originalDecryptedText: String? = null
+        var previousEncryptedText = (previewEditor as TextEditor).editor.document.text
+        var previousDecryptedText: String? = null
 
         init {
             (editor as? Disposable)?.let { Disposer.register(this, it) }
@@ -58,18 +61,19 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
 
         fun decrypt() {
             // TODO @Blarc: Is there any other way to get project?
-            editor.project?.let {
-                it.service<SopsService>().sopsDecrypt(file) {
+            editor.project?.let { project ->
+                project.service<SopsService>().sopsDecrypt(file) { decryptedContent ->
                     withContext(Dispatchers.EDT) {
                         WriteAction.run<Throwable> {
-                            editor.document.setText(it)
+                            editor.document.setText(decryptedContent)
                             if (originalDecryptedText == null) {
-                                originalDecryptedText = it
+                                originalDecryptedText = decryptedContent
+                                previousDecryptedText = decryptedContent
                             }
                         }
                     }
                 }
-                EditorNotifications.getInstance(it).updateAllNotifications()
+                EditorNotifications.getInstance(project).updateAllNotifications()
             }
         }
 
@@ -87,23 +91,22 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
         }
 
         companion object {
-            fun create(file: VirtualFile, project: Project): SopsEditor {
+            fun create(decryptedFile: VirtualFile, encryptedFile: VirtualFile, project: Project): SopsEditor {
                 val textEditorProvider = TextEditorProvider.getInstance()
                 val editorFactory = EditorFactory.getInstance()
 
                 val encryptedViewer = editorFactory.createEditor(
-                    FileDocumentManager.getInstance().getDocument(file)!!,
+                    FileDocumentManager.getInstance().getDocument(encryptedFile)!!,
                     project,
-                    file.fileType,
-                    true
+                    encryptedFile.fileType,
+                    false
                 )
-
                 // Removes vertical line
                 encryptedViewer.settings.isRightMarginShown = false
                 val decryptedViewer = editorFactory.createEditor(
-                    editorFactory.createDocument(""),
+                    FileDocumentManager.getInstance().getDocument(decryptedFile)!!,
                     project,
-                    file.fileType,
+                    encryptedFile.fileType,
                     false
                 )
 

@@ -4,7 +4,6 @@ import com.github.blarc.sops.intellij.plugin.ScriptUtil
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.providers.SopsEditorProvider
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
-import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.*
 import com.intellij.execution.util.ExecUtil
@@ -75,11 +74,13 @@ class SopsService(
     fun sopsEncrypt(editor: SopsEditorProvider.SopsEditor) {
         cs.launch {
             withBackgroundProgress(project, message("background.encrypting")) {
-                if (editor.getDecryptedText().isBlank()) {
+                val decryptedText = editor.getDecryptedText()
+                if (decryptedText.isBlank()) {
                     return@withBackgroundProgress
                 }
 
-                if (editor.getDecryptedText() == editor.originalDecryptedText) {
+                // Do not change file (metadata), if the content has not changed
+                if (decryptedText == editor.originalDecryptedText) {
                     withContext(Dispatchers.EDT) {
                         runWriteAction {
                             editor.file.writeText(editor.originalEncryptedText)
@@ -89,23 +90,37 @@ class SopsService(
                     return@withBackgroundProgress
                 }
 
+                // Do not change file (metadata), if the content has not changed
+                if (decryptedText == editor.previousDecryptedText) {
+                    withContext(Dispatchers.EDT) {
+                        runWriteAction {
+                            editor.file.writeText(editor.previousEncryptedText)
+                        }
+                    }
+                    error = ""
+                    return@withBackgroundProgress
+                }
+
                 withContext(Dispatchers.IO) {
                     try {
-                        edit(editor.file, editor.getDecryptedText(), {
+                        edit(editor.file, decryptedText, {
                             error = ""
                             editor.file.refresh(true, false)
                         }, {
                             error = it
 
-                            val encryptedContent = readAction {
+                            val encryptedText = readAction {
                                 editor.file.readText()
                             }
 
                             withContext(Dispatchers.EDT) {
                                 runWriteAction {
-                                    editor.file.writeText(encryptedContent)
+                                    editor.file.writeText(encryptedText)
                                 }
                             }
+
+                            editor.previousDecryptedText = decryptedText
+                            editor.previousEncryptedText = encryptedText
                         })
                     } catch (e: IllegalArgumentException) {
                         error = e.localizedMessage
@@ -137,9 +152,9 @@ class SopsService(
 
         val command = buildCommand(file.parent.path)
 
-        val editorPath: String = scriptFiles.script.toAbsolutePath().toString() // escape twice for windows because of ENV variable parsing
-            .replace("\\", "\\\\") // escape whitespaces
-            .replace(" ", "\\ ")
+        val editorPath: String = scriptFiles.script.toAbsolutePath().toString()
+            .replace("\\", "\\\\") // escape twice for windows because of ENV variable parsing
+            .replace(" ", "\\ ") // escape whitespaces
 
         command.withEnvironment("EDITOR", editorPath)
         command.addParameter(file.name)
@@ -164,7 +179,7 @@ class SopsService(
             override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                 output.set(event.text)
 
-                if (null != event.text && ScriptUtil.INPUT_START_IDENTIFIER == event.text.trim { it <= ' ' }) {
+                if (null != event.text && ScriptUtil.INPUT_START_IDENTIFIER == event.text.trim()) {
                     IOUtils.write(newContent, event.processHandler.processInput, file.charset)
                     event.processHandler.processInput!!.close()
                 }
