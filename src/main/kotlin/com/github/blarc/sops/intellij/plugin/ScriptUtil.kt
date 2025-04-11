@@ -22,6 +22,13 @@ object ScriptUtil {
 		
 		""".trimIndent().format(INPUT_START_IDENTIFIER)
 
+    /*
+    #!/usr/bin/env sh
+    set -eu
+    printf "8aa203fd-cc7d-4e00-9c2f-af32b872e4c3"
+    cat - > "$1"
+     */
+
     private val SHELL_SCRIPT: String = """
 		#!/usr/bin/env sh
 		set -eu
