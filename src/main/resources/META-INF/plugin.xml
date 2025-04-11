@@ -19,6 +19,14 @@
         <h3>Troubleshooting</h3>
         <p>I would love to hear from you if you have any issues or feature requests. Please report them
         <a href="https://github.com/Blarc/sops-intellij-plugin/issues">here</a>.</p>
+        <h3>Demo</h3>
+        <p>
+            <img
+            src="https://github.com/Blarc/sops-intellij-plugin/blob/9f627bfc03f4e71f318bffeb2b95a9c21a6e001a/screenshots/plugin-white.gif"
+            border="0"
+            width="600"
+            alt="Demo.gif"/>
+         </p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
