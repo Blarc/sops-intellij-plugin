@@ -33,19 +33,13 @@ SOPS IntelliJ plugin allows you to decrypt and encrypt files encrypted with SOPS
 - Show encrypted content as preview.
 - On save, encrypt the contents, if the file has changed.
 
-[//]: # (## Demo)
+## Demo
 
-[//]: # ()
-
-[//]: # (<picture>)
-
-[//]: # (  <source media="&#40;prefers-color-scheme: dark&#41;" srcset="./screenshots/plugin-dark.gif">)
-
-[//]: # (  <source media="&#40;prefers-color-scheme: light&#41;" srcset="./screenshots/plugin-white.gif">)
-
-[//]: # (  <img alt="Demo." src="./screenshots/plugin-white.gif">)
-
-[//]: # (</picture>)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./screenshots/plugin-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="./screenshots/plugin-white.gif">
+  <img alt="Demo." src="./screenshots/plugin-white.gif">
+</picture>
 
 ## Compatibility
 
