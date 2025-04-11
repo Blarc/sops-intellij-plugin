@@ -1,7 +1,7 @@
-<!-- Keep a Changelog guide -> https://keepachangelog.com -->
-
 # Changelog
 
 ## [Unreleased]
+
 ### Added
-- Initial implementation of the plugin.
+- Do not show error, if error code is 200 (File has not changed).
+- Encrypted content is reverted, if decrypted content has not changed or is the same after multiple edits.
