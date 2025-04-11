@@ -106,8 +106,14 @@ class SopsService(
                         edit(editor.file, decryptedText, {
                             error = ""
                             editor.file.refresh(true, false)
-                        }, {
-                            error = it
+                        }, { message, code ->
+                            error = message
+
+                            // ignore "File has not changed" error
+                            // https://github.com/getsops/sops/blob/main/cmd/sops/codes/codes.go#L29
+                            if (code == 200) {
+                                error = ""
+                            }
 
                             val encryptedText = readAction {
                                 editor.file.readText()
@@ -146,7 +152,7 @@ class SopsService(
         file: VirtualFile,
         newContent: String?,
         successHandler: suspend () -> Unit,
-        failureHandler: suspend (String) -> Unit
+        failureHandler: suspend (String, Int) -> Unit
     ) {
         val scriptFiles = ScriptUtil.createScriptFiles()
 
@@ -171,7 +177,7 @@ class SopsService(
                     if (event.exitCode == 0 && !failed.get()) {
                         successHandler.invoke()
                     } else {
-                        failureHandler.invoke(output.get())
+                        failureHandler.invoke(output.get(), event.exitCode)
                     }
                 }
             }
@@ -200,7 +206,7 @@ class SopsService(
         processHandler.startNotify()
     }
 
-    private fun buildCommand(cwd: String): GeneralCommandLine {
+    private fun buildCommand(cwd: String? = null): GeneralCommandLine {
         if (AppSettings.instance.sopsPath.isBlank()) {
             throw IllegalArgumentException("Sops path must be specified!")
         }
