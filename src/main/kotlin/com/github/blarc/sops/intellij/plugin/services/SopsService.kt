@@ -13,6 +13,7 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.readText
 import com.intellij.openapi.vfs.writeText
@@ -24,6 +25,7 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -69,6 +71,17 @@ class SopsService(
                 onResult(result)
             }
         }
+    }
+
+    fun sopsDecrypt(content: String, onResult: suspend (decryptedText: String) -> Unit) {
+        val tmpFilePath = Files.createTempFile("sopsIntellijPlugin", ".yaml")
+        Files.writeString(tmpFilePath, content)
+        // Delete on JVM exit
+        val tmpFile = tmpFilePath.toFile()
+        tmpFile.deleteOnExit()
+
+        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(tmpFile)
+        sopsDecrypt(virtualFile!!, onResult)
     }
 
     fun sopsEncrypt(editor: SopsEditorProvider.SopsEditor) {

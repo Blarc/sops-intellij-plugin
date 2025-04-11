@@ -2,6 +2,7 @@ package com.github.blarc.sops.intellij.plugin.providers
 
 import com.github.blarc.sops.intellij.plugin.SopsUtil.isSopsFileBasedOnContent
 import com.github.blarc.sops.intellij.plugin.services.SopsService
+import com.github.blarc.sops.intellij.plugin.services.SopsVcsService
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
@@ -18,7 +19,6 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
 
 class SopsEditorProvider : FileEditorProvider, DumbAware {
     companion object {
@@ -50,12 +50,24 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
 
         var originalEncryptedText = (previewEditor as TextEditor).editor.document.text
         var originalDecryptedText: String? = null
+
         var previousEncryptedText = (previewEditor as TextEditor).editor.document.text
         var previousDecryptedText: String? = null
 
         init {
             (editor as? Disposable)?.let { Disposer.register(this, it) }
             (previewEditor as? Disposable)?.let { Disposer.register(this, it) }
+
+            editor.project?.let { project ->
+                project.service<SopsVcsService>().getLastCommitContent(file) { content ->
+                    if (content != null) {
+                        originalEncryptedText = content
+                    }
+                    project.service<SopsService>().sopsDecrypt(originalEncryptedText) { decryptedText ->
+                        originalDecryptedText = decryptedText
+                    }
+                }
+            }
             decrypt()
         }
 
@@ -65,11 +77,8 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                 project.service<SopsService>().sopsDecrypt(file) { decryptedContent ->
                     withContext(Dispatchers.EDT) {
                         WriteAction.run<Throwable> {
+                            previousDecryptedText = decryptedContent
                             editor.document.setText(decryptedContent)
-                            if (originalDecryptedText == null) {
-                                originalDecryptedText = decryptedContent
-                                previousDecryptedText = decryptedContent
-                            }
                         }
                     }
                 }
