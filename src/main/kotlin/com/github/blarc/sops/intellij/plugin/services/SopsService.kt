@@ -103,16 +103,16 @@ class SopsService(
                     return@withBackgroundProgress
                 }
 
-                // Do not change file (metadata), if the content has not changed
-                if (decryptedText == editor.previousDecryptedText) {
-                    withContext(Dispatchers.EDT) {
-                        runWriteAction {
-                            editor.file.writeText(editor.previousEncryptedText)
-                        }
-                    }
-                    error = ""
-                    return@withBackgroundProgress
-                }
+//                // Do not change file (metadata), if the content has not changed
+//                if (decryptedText == editor.previousDecryptedText) {
+//                    withContext(Dispatchers.EDT) {
+//                        runWriteAction {
+//                            editor.file.writeText(editor.previousEncryptedText)
+//                        }
+//                    }
+//                    error = ""
+//                    return@withBackgroundProgress
+//                }
 
                 withContext(Dispatchers.IO) {
                     try {

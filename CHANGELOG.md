@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Encrypted content does not update.
+
 ## [1.1.0] - 2025-04-11
 
 ### Added
