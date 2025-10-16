@@ -1,9 +1,19 @@
 package com.github.blarc.sops.intellij.plugin
 
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.vcsUtil.VcsUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object SopsUtil {
 

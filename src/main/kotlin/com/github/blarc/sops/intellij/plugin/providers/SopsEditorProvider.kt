@@ -51,9 +51,6 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
         var originalEncryptedText = (previewEditor as TextEditor).editor.document.text
         var originalDecryptedText: String? = null
 
-        var previousEncryptedText = (previewEditor as TextEditor).editor.document.text
-        var previousDecryptedText: String? = null
-
         init {
             (editor as? Disposable)?.let { Disposer.register(this, it) }
             (previewEditor as? Disposable)?.let { Disposer.register(this, it) }
@@ -63,26 +60,27 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                     if (content != null) {
                         originalEncryptedText = content
                     }
-                    project.service<SopsService>().sopsDecrypt(originalEncryptedText) { decryptedText ->
-                        originalDecryptedText = decryptedText
-                    }
+                    // Content might not be encrypted, so decryption might fail
+                    // But since this content might be outdated, we do not want to show an error
+                    project.service<SopsService>().decrypt(originalEncryptedText, {
+                        decryptedText -> originalDecryptedText = decryptedText
+                    })
                 }
             }
+
+            // This will show an error if the current content is not valid
             decrypt()
         }
 
         fun decrypt() {
-            // TODO @Blarc: Is there any other way to get project?
             editor.project?.let { project ->
-                project.service<SopsService>().sopsDecrypt(file) { decryptedContent ->
+                project.service<SopsService>().decrypt(file, false,{ decryptedContent ->
                     withContext(Dispatchers.EDT) {
                         WriteAction.run<Throwable> {
-                            previousDecryptedText = decryptedContent
                             editor.document.setText(decryptedContent)
                         }
                     }
-                }
-                EditorNotifications.getInstance(project).updateAllNotifications()
+                })
             }
         }
 
