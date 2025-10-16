@@ -30,7 +30,6 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <depends>org.jetbrains.plugins.yaml</depends>
 
     <resource-bundle>messages.SopsBundle</resource-bundle>
 
@@ -58,4 +57,36 @@
         <listener class="com.github.blarc.sops.intellij.plugin.listener.SopsSaveActionListener"
                   topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
     </projectListeners>
+
+    <actions>
+        <action
+                id="SOPSEncrypt"
+                text="Encrypt with SOPS"
+                description="Encrypt the chosen file with SOPS"
+                class="com.github.blarc.sops.intellij.plugin.SopsEncryptAction"
+        >
+
+            <keyboard-shortcut
+                    keymap="$default"
+                    first-keystroke="control alt E"
+            />
+
+            <add-to-group group-id="ProjectViewPopupMenu" />
+        </action>
+
+        <action
+                id="SOPSDecrypt"
+                text="Decrypt with SOPS"
+                description="Decrypt the chosen file with SOPS"
+                class="com.github.blarc.sops.intellij.plugin.SopsDecryptAction"
+        >
+
+            <keyboard-shortcut
+                    keymap="$default"
+                    first-keystroke="control alt D"
+            />
+
+            <add-to-group group-id="ProjectViewPopupMenu" />
+        </action>
+    </actions>
 </idea-plugin>

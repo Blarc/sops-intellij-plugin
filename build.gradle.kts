@@ -3,10 +3,11 @@ import org.jetbrains.changelog.Changelog
 fun properties(key: String) = project.findProperty(key).toString()
 
 plugins {
-    id("java") // Java support
-    alias(libs.plugins.kotlin) // Kotlin support
-    alias(libs.plugins.gradleIntelliJPlugin) // Gradle IntelliJ Plugin
-    alias(libs.plugins.changelog) // Gradle Changelog Plugin
+    id("org.jetbrains.kotlin.jvm") version "2.2.20"
+    id("org.jetbrains.intellij.platform") version "2.10.0"
+
+    // Gradle Changelog Plugin
+    id("org.jetbrains.changelog") version "2.4.0"
 }
 
 group = properties("pluginGroup")

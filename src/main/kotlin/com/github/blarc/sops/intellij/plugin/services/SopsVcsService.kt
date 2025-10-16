@@ -1,6 +1,7 @@
 package com.github.blarc.sops.intellij.plugin.services
 
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.history.VcsFileRevision

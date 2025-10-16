@@ -18,19 +18,21 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
     override fun collectNotificationData(
         project: Project,
         file: VirtualFile
-    ) = Function { _: FileEditor ->
+    ) = Function { editor: FileEditor ->
+        if (editor is SopsEditorProvider.SopsEditor) {
+            val error = project.service<SopsService>().errors[file.path]
 
-        val error = project.service<SopsService>().error
-        if (error.isNotBlank()) {
-            val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
-            panel.text = error
-            panel.createActionLabel("Try again") {
-                val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
-                if (editor is SopsEditorProvider.SopsEditor) {
-                    editor.decrypt()
+            if (!error.isNullOrBlank()) {
+                val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
+                panel.text = error
+                panel.createActionLabel("Try again") {
+                    val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
+                    if (editor is SopsEditorProvider.SopsEditor) {
+                        editor.decrypt()
+                    }
                 }
+                return@Function panel
             }
-            return@Function panel
         }
         return@Function null
     }

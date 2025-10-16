@@ -7,6 +7,8 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.toMutableProperty
+import com.intellij.ui.dsl.builder.toNonNullableProperty
+import com.intellij.ui.dsl.builder.toNullableProperty
 
 class AppSettingsConfigurable : BoundConfigurable(message("name")) {
     override fun createPanel() = panel {
@@ -15,7 +17,7 @@ class AppSettingsConfigurable : BoundConfigurable(message("name")) {
                 .widthGroup("label")
             textField()
                 .align(Align.FILL)
-                .bindText(AppSettings.instance::sopsPath)
+                .bindText(AppSettings.instance::sopsPath.toNonNullableProperty(""))
         }
 
         row {
