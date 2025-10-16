@@ -19,7 +19,7 @@ class AppSettings : PersistentStateComponent<AppSettings> {
             get() = ApplicationManager.getApplication().getService(AppSettings::class.java)
     }
 
-    var sopsPath: String = ""
+    var sopsPath: String? = null
     var sopsEnvironment: Map<String, String> = emptyMap()
 
     override fun getState(): AppSettings {

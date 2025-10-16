@@ -17,7 +17,7 @@ class SopsSaveActionListener(
 
         editors.filter { it.isValid }.forEach {
             if (it is SopsEditorProvider.SopsEditor) {
-                project.service<SopsService>().sopsEncrypt(it)
+                project.service<SopsService>().editEncrypt(it.file, it.getDecryptedText(), it.originalDecryptedText, it.originalEncryptedText)
             }
         }
 
