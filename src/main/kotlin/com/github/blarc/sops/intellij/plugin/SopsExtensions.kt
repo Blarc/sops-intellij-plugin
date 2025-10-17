@@ -1,13 +1,16 @@
 package com.github.blarc.sops.intellij.plugin
 
+import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.history.VcsFileRevision
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.ui.layout.ValidationInfoBuilder
 import com.intellij.vcsUtil.VcsUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,3 +59,6 @@ private fun VcsFileRevision.contentAsString(): String? {
         null
     }
 }
+
+fun ValidationInfoBuilder.notBlank(value: String): ValidationInfo? =
+    if (value.isBlank()) error(message("validation.required")) else null

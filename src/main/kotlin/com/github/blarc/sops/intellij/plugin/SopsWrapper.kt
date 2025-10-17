@@ -16,6 +16,18 @@ import java.nio.file.Files
 
 object SopsWrapper {
 
+    suspend fun version(
+        sopsPath: String,
+        onSuccess: suspend (String) -> Unit,
+        onError: suspend (String) -> Unit = {}
+    ) {
+        run(
+            sopsPath, "--version",
+            onSuccess = { result -> onSuccess(result.lines().first()) },
+            onError = onError
+        )
+    }
+
     suspend fun encrypt(
         file: VirtualFile,
         inPlace: Boolean = false,
@@ -52,7 +64,7 @@ object SopsWrapper {
     suspend fun edit(
         file: VirtualFile,
         newText: String?,
-        onSuccess: suspend () -> Unit,
+        onSuccess: suspend () -> Unit = {},
         onError: suspend (String, Int) -> Unit = { _, _ -> }
     ) {
 
@@ -118,7 +130,7 @@ object SopsWrapper {
 
     suspend fun run(
         sopsCommand: String,
-        file: VirtualFile,
+        file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit
@@ -128,13 +140,25 @@ object SopsWrapper {
             onError("Sops path not configured")
             return
         }
+        run(sopsPath, sopsCommand, file, inPlace, onSuccess, onError)
+    }
 
-        val command = buildCommand(sopsPath, file.parent.path)
+    suspend fun run(
+        sopsPath: String,
+        sopsCommand: String,
+        file: VirtualFile? = null,
+        inPlace: Boolean = false,
+        onSuccess: suspend (String) -> Unit,
+        onError: suspend (String) -> Unit
+    ) {
+        val command = buildCommand(sopsPath, file?.parent?.path)
         command.addParameter(sopsCommand)
         if (inPlace) {
             command.addParameter("--in-place")
         }
-        command.addParameter(file.name)
+        if (file != null) {
+            command.addParameter(file.name)
+        }
 
         val output = try {
             withContext(Dispatchers.IO) {

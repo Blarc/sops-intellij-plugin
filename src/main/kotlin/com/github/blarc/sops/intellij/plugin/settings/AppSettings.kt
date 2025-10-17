@@ -21,7 +21,9 @@ class AppSettings : PersistentStateComponent<AppSettings> {
     }
 
     var sopsPath: String? = null
-    var sopsEnvironment: Map<String, String> = emptyMap()
+    var sopsEnvironment: Map<String, String> = mapOf(
+        Pair("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
+    )
 
     override fun getState(): AppSettings {
         return this
