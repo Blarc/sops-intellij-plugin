@@ -7,9 +7,11 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.codeStyle.CodeStyleManager
+import com.intellij.vcsUtil.VcsUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,23 +31,5 @@ object SopsUtil {
             thisLogger().warn("could not get content of file ${file.name} $e")
         }
         return false
-    }
-
-    suspend fun reindentContent(content: String, fileType: FileType, project: Project): String {
-        return readAction {
-            val psiFile = PsiFileFactory.getInstance(project).createFileFromText(
-                "tmp",
-                fileType,
-                content
-            )
-
-            CodeStyleManager.getInstance(project).reformatText(
-                psiFile,
-                0,
-                psiFile.textLength
-            )
-
-            psiFile.text
-        }
     }
 }

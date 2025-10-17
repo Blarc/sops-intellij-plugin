@@ -32,7 +32,7 @@ class SopsDecryptAction : AnAction(), DumbAware {
     }
 
     override fun update(e: AnActionEvent) {
-        e.presentation.icon = Icons.LOCKED_ICON.getThemeBasedIcon()
+        e.presentation.icon = Icons.KEY_ICON.getThemeBasedIcon()
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread {

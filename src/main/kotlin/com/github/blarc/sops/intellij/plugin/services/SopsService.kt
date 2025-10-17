@@ -1,21 +1,18 @@
 package com.github.blarc.sops.intellij.plugin.services
 
-import ai.grazie.text.TextRange
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
-import com.github.blarc.sops.intellij.plugin.SopsUtil.reindentContent
 import com.github.blarc.sops.intellij.plugin.SopsWrapper
-import com.intellij.application.options.CodeStyle
+import com.github.blarc.sops.intellij.plugin.equalsIgnoreIndent
+import com.github.blarc.sops.intellij.plugin.getLastCommitContent
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.readText
 import com.intellij.openapi.vfs.writeText
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,19 +34,21 @@ class SopsService(
         onError: suspend (message: String?) -> Unit = {}
     ) {
         cs.launch {
-            SopsWrapper.decrypt(
-                file, project, inPlace,
-                {
-                    errors[file.path] = ""
-                    EditorNotifications.getInstance(project).updateAllNotifications()
-                    onSuccess(it)
-                },
-                { message ->
-                    errors[file.path] = message
-                    EditorNotifications.getInstance(project).updateAllNotifications()
-                    onError(message)
-                }
-            )
+            withBackgroundProgress(project, message("background.decrypting")) {
+                SopsWrapper.decrypt(
+                    file, inPlace,
+                    { decryptedText ->
+                        errors[file.path] = ""
+                        EditorNotifications.getInstance(project).updateAllNotifications()
+                        onSuccess(decryptedText)
+                    },
+                    { message ->
+                        errors[file.path] = message
+                        EditorNotifications.getInstance(project).updateAllNotifications()
+                        onError(message)
+                    }
+                )
+            }
         }
     }
 
@@ -59,7 +58,9 @@ class SopsService(
         onError: suspend (message: String?) -> Unit = {}
     ) {
         cs.launch {
-            SopsWrapper.decrypt(text, project, false, onSuccess, onError)
+            withBackgroundProgress(project, message("background.decrypting")) {
+                SopsWrapper.decrypt(text, onSuccess, onError)
+            }
         }
     }
 
@@ -70,51 +71,74 @@ class SopsService(
         onError: suspend (message: String?) -> Unit = {}
     ) {
         cs.launch {
-            SopsWrapper.encrypt(
-                file, project, inPlace,
-                {
+            withBackgroundProgress(project, message("background.encrypting")) {
+                val newDecryptedText = readAction {
+                    file.readText()
+                }
+
+                val originalEncryptedText = file.getLastCommitContent(project)
+                var originalDecryptedText = ""
+                SopsWrapper.decrypt(originalEncryptedText.orEmpty(), onSuccess = {
+                    originalDecryptedText = it
+                })
+
+                // Do not change the file (metadata) if the content has not changed
+                if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
+                    withContext(Dispatchers.EDT) {
+                        runWriteAction {
+                            file.writeText(originalEncryptedText.orEmpty())
+                        }
+                    }
                     errors[file.path] = ""
                     EditorNotifications.getInstance(project).updateAllNotifications()
-                    onSuccess(it)
-                },
-                { message ->
-                    errors[file.path] = message
-                    EditorNotifications.getInstance(project).updateAllNotifications()
-                    onError(message)
+                    onSuccess(originalDecryptedText)
+                    return@withBackgroundProgress
                 }
-            )
+
+                SopsWrapper.encrypt(
+                    file, inPlace,
+                    {
+                        errors[file.path] = ""
+                        EditorNotifications.getInstance(project).updateAllNotifications()
+                        onSuccess(it)
+                    },
+                    { message ->
+                        errors[file.path] = message
+                        EditorNotifications.getInstance(project).updateAllNotifications()
+                        onError(message)
+                    }
+                )
+            }
         }
     }
 
     fun editEncrypt(
         file: VirtualFile,
-        decryptedText: String,
+        newDecryptedText: String,
         originalDecryptedText: String?,
         originalEncryptedText: String
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.encrypting")) {
-                if (decryptedText.isBlank()) {
+                if (newDecryptedText.isBlank()) {
                     return@withBackgroundProgress
                 }
 
-                val decryptedTextFormatted = reindentContent(decryptedText, file.fileType, project)
-                val originalDecryptedTextFormatted = reindentContent(originalDecryptedText.orEmpty(), file.fileType, project)
-
                 // Do not change the file (metadata) if the content has not changed
-                if (decryptedTextFormatted == originalDecryptedTextFormatted) {
+                if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
                     withContext(Dispatchers.EDT) {
                         runWriteAction {
                             file.writeText(originalEncryptedText)
                         }
                     }
                     errors[file.path] = ""
+                    EditorNotifications.getInstance(project).updateAllNotifications()
                     return@withBackgroundProgress
                 }
 
                 withContext(Dispatchers.IO) {
                     SopsWrapper.edit(
-                        file, decryptedText, project,
+                        file, newDecryptedText,
                         {
                             errors[file.path] = ""
                             file.refresh(true, false)

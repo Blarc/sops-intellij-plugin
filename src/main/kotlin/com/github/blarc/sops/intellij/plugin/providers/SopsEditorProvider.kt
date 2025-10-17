@@ -51,9 +51,6 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
         var originalEncryptedText = (previewEditor as TextEditor).editor.document.text
         var originalDecryptedText: String? = null
 
-        var previousEncryptedText = (previewEditor as TextEditor).editor.document.text
-        var previousDecryptedText: String? = null
-
         init {
             (editor as? Disposable)?.let { Disposer.register(this, it) }
             (previewEditor as? Disposable)?.let { Disposer.register(this, it) }
@@ -80,7 +77,6 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                 project.service<SopsService>().decrypt(file, false,{ decryptedContent ->
                     withContext(Dispatchers.EDT) {
                         WriteAction.run<Throwable> {
-                            previousDecryptedText = decryptedContent
                             editor.document.setText(decryptedContent)
                         }
                     }

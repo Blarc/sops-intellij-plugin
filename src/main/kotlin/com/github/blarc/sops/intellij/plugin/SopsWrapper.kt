@@ -1,15 +1,12 @@
 package com.github.blarc.sops.intellij.plugin
 
-import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.*
 import com.intellij.execution.util.ExecUtil
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.platform.ide.progress.withBackgroundProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
@@ -21,30 +18,26 @@ object SopsWrapper {
 
     suspend fun encrypt(
         file: VirtualFile,
-        project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit
+        onError: suspend (String) -> Unit = {}
     ) {
-        run("encrypt", file, project, inPlace, onSuccess, onError)
+        run("encrypt", file, inPlace, onSuccess, onError)
     }
 
     suspend fun decrypt(
         file: VirtualFile,
-        project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit
+        onError: suspend (String) -> Unit = {}
     ) {
-        run("decrypt", file, project, inPlace, onSuccess, onError)
+        run("decrypt", file, inPlace, onSuccess, onError)
     }
 
     suspend fun decrypt(
         text: String,
-        project: Project,
-        inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit
+        onError: suspend (String) -> Unit = {}
     ) {
         val tmpFilePath = Files.createTempFile("sopsIntellijPlugin", ".yaml")
         Files.writeString(tmpFilePath, text)
@@ -53,15 +46,14 @@ object SopsWrapper {
         tmpFile.deleteOnExit()
 
         val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(tmpFile)
-        run("decrypt", file!!, project, inPlace, onSuccess, onError)
+        run("decrypt", file!!, false, onSuccess, onError)
     }
 
     suspend fun edit(
         file: VirtualFile,
         newText: String?,
-        project: Project,
         onSuccess: suspend () -> Unit,
-        onError: suspend (String, Int) -> Unit
+        onError: suspend (String, Int) -> Unit = { _, _ -> }
     ) {
 
         val sopsPath = AppSettings.instance.sopsPath
@@ -113,10 +105,8 @@ object SopsWrapper {
         })
         processHandler.startNotify()
 
-        withBackgroundProgress(project, message("background.decrypting")) {
-            withContext(Dispatchers.IO) {
-                processHandler.waitFor()
-            }
+        withContext(Dispatchers.IO) {
+            processHandler.waitFor()
         }
 
         if (exitCode == 0) {
@@ -129,7 +119,6 @@ object SopsWrapper {
     suspend fun run(
         sopsCommand: String,
         file: VirtualFile,
-        project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit
@@ -140,28 +129,26 @@ object SopsWrapper {
             return
         }
 
-        withBackgroundProgress(project, message("background.decrypting")) {
-            val command = buildCommand(sopsPath, file.parent.path)
-            command.addParameter(sopsCommand)
-            if (inPlace) {
-                command.addParameter("--in-place")
-            }
-            command.addParameter(file.name)
+        val command = buildCommand(sopsPath, file.parent.path)
+        command.addParameter(sopsCommand)
+        if (inPlace) {
+            command.addParameter("--in-place")
+        }
+        command.addParameter(file.name)
 
-            val output = try {
-                withContext(Dispatchers.IO) {
-                    ExecUtil.execAndGetOutput(command)
-                }
-            } catch (e: ProcessNotCreatedException) {
-                onError(e.localizedMessage)
-                return@withBackgroundProgress
+        val output = try {
+            withContext(Dispatchers.IO) {
+                ExecUtil.execAndGetOutput(command)
             }
+        } catch (e: ProcessNotCreatedException) {
+            onError(e.localizedMessage)
+            return
+        }
 
-            if (output.exitCode != 0) {
-                onError(output.stderr)
-            } else {
-                onSuccess(output.stdout)
-            }
+        if (output.exitCode != 0) {
+            onError(output.stderr)
+        } else {
+            onSuccess(output.stdout)
         }
     }
 

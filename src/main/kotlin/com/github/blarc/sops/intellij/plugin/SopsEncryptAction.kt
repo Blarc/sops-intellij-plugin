@@ -16,7 +16,8 @@ class SopsEncryptAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = e.getData(CommonDataKeys.VIRTUAL_FILE) ?: return
-        project.service<SopsService>().encrypt(file, true,{
+
+        project.service<SopsService>().encrypt(file, true, {
             withContext(Dispatchers.EDT) {
                 file.refresh(false, false)
                 val fileEditorManager = FileEditorManager.getInstance(project)
@@ -36,6 +37,6 @@ class SopsEncryptAction : AnAction(), DumbAware {
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread {
-        return ActionUpdateThread.BGT
+        return ActionUpdateThread.EDT
     }
 }

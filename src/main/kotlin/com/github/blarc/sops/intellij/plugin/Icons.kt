@@ -18,4 +18,5 @@ object Icons {
     }
 
     val LOCKED_ICON = PluginIcon("/icons/lockedBright.svg", "/icons/lockedDark.svg")
+    val KEY_ICON = PluginIcon("/icons/keyBright.svg", "/icons/keyDark.svg")
 }
