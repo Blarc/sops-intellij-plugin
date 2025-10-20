@@ -16,7 +16,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.LightVirtualFile
-import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
