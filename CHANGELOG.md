@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- Popup menu action to decrypt/encrypt file.
+- Set the default path for SOPS based on OS.
+- Add button to verify SOPS installation.
+
 ## [1.1.1] - 2025-06-11
 
 ### Fixed
