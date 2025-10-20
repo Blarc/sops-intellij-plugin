@@ -197,7 +197,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.artifact.outputs.filename }}
+          name: ${{ steps.artifact.outputs.filename }}-verification
           path: ./build/distributions/content/*/*
 
   # Prepare a draft release for GitHub Releases page for the manual verification
