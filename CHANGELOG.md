@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Notifications and links in settings for support.
+
 ## [1.2.0] - 2025-10-21
 
 ### Added
