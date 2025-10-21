@@ -1,4 +1,4 @@
-package com.github.blarc.sops.intellij.plugin.listener
+package com.github.blarc.sops.intellij.plugin.listeners
 
 import com.github.blarc.sops.intellij.plugin.providers.SopsEditorProvider
 import com.github.blarc.sops.intellij.plugin.services.SopsService

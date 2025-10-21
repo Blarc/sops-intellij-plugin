@@ -1,25 +1,16 @@
 package com.github.blarc.sops.intellij.plugin.settings
 
+import com.github.blarc.sops.intellij.plugin.SopsBundle
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.notBlank
 import com.intellij.execution.configuration.EnvironmentVariablesComponent
-import com.intellij.openapi.externalSystem.service.ui.project.path.WorkingDirectoryField
+import com.intellij.execution.configuration.EnvironmentVariablesTextFieldWithBrowseButton
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.components.JBTextField
-import com.intellij.ui.components.fields.ExpandableTextField
-import com.intellij.ui.dsl.builder.Align
-import com.intellij.ui.dsl.builder.AlignX
-import com.intellij.ui.dsl.builder.AlignY
-import com.intellij.ui.dsl.builder.bindText
-import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.dsl.builder.toMutableProperty
-import com.intellij.ui.dsl.builder.toNonNullableProperty
-import com.intellij.ui.dsl.builder.toNullableProperty
-import java.awt.Color
+import com.intellij.ui.dsl.builder.*
 
 class AppSettingsConfigurable : BoundConfigurable(message("name")) {
 
@@ -66,18 +57,26 @@ class AppSettingsConfigurable : BoundConfigurable(message("name")) {
         }
 
         row {
-            label(message("settings.environment"))
-                .widthGroup("label")
-            cell(EnvironmentVariablesComponent())
-                .align(Align.FILL)
-                .applyToComponent {
-                    text = ""
+            panel {
+                row {
+                    label(message("settings.environment"))
+                        .widthGroup("label")
+                    cell(EnvironmentVariablesTextFieldWithBrowseButton())
+                        .align(AlignX.FILL)
+                        .bind(
+                            componentSet = { c, s -> c.envs = s },
+                            componentGet = { c -> c.envs },
+                            prop = AppSettings.instance::sopsEnvironment.toMutableProperty()
+                        )
                 }
-                .bind(
-                    componentSet = { c, s -> c.envs = s },
-                    componentGet = { c -> c.envs },
-                    prop = AppSettings.instance::sopsEnvironment.toMutableProperty()
-                )
+            }.align(AlignY.TOP)
+        }.resizableRow()
+
+        row {
+            browserLink(message("settings.report-bug"), SopsBundle.URL_BUG_REPORT.toString())
+            browserLink(message("settings.github-star"), SopsBundle.URL_GITHUB.toString())
+            browserLink(message("settings.github-sponsors"), SopsBundle.URL_GITHUB_SPONSORS.toString())
+            browserLink(message("settings.kofi"), SopsBundle.URL_GITHUB_SPONSORS.toString())
         }
     }
 }

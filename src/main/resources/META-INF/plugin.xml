@@ -51,10 +51,24 @@
                 id="Sops.SopsEditorNotificationsProvider"/>
         />
 
+        <notificationGroup
+                id="sops.notification.general"
+                displayType="BALLOON"
+                key="notification.group.general.name"
+        />
+        <notificationGroup
+                id="sops.notification.important"
+                displayType="STICKY_BALLOON"
+                key="notification.group.important.name"
+        />
+        <postStartupActivity
+                implementation="com.github.blarc.sops.intellij.plugin.listeners.ApplicationStartupListener"
+        />
+
     </extensions>
 
     <projectListeners>
-        <listener class="com.github.blarc.sops.intellij.plugin.listener.SopsSaveActionListener"
+        <listener class="com.github.blarc.sops.intellij.plugin.listeners.SopsSaveActionListener"
                   topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
     </projectListeners>
 

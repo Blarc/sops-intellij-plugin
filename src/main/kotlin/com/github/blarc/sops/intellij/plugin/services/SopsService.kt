@@ -4,6 +4,7 @@ import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.SopsWrapper
 import com.github.blarc.sops.intellij.plugin.equalsIgnoreIndent
 import com.github.blarc.sops.intellij.plugin.getLastCommitContent
+import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteAction
@@ -40,6 +41,7 @@ class SopsService(
                     { decryptedText ->
                         errors[file.path] = ""
                         EditorNotifications.getInstance(project).updateAllNotifications()
+                        AppSettings.instance.recordHit()
                         onSuccess(decryptedText)
                     },
                     { message ->
@@ -59,7 +61,11 @@ class SopsService(
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.decrypting")) {
-                SopsWrapper.decrypt(text, onSuccess, onError)
+                AppSettings.instance.recordHit()
+                SopsWrapper.decrypt(text, {
+                    AppSettings.instance.recordHit()
+                    onSuccess(it)
+                }, onError)
             }
         }
     }
@@ -100,6 +106,7 @@ class SopsService(
                     {
                         errors[file.path] = ""
                         EditorNotifications.getInstance(project).updateAllNotifications()
+                        AppSettings.instance.recordHit()
                         onSuccess(it)
                     },
                     { message ->
@@ -133,6 +140,7 @@ class SopsService(
                     }
                     errors[file.path] = ""
                     EditorNotifications.getInstance(project).updateAllNotifications()
+                    AppSettings.instance.recordHit()
                     return@withBackgroundProgress
                 }
 
@@ -141,6 +149,8 @@ class SopsService(
                         file, newDecryptedText,
                         {
                             errors[file.path] = ""
+                            EditorNotifications.getInstance(project).updateAllNotifications()
+                            AppSettings.instance.recordHit()
                             file.refresh(true, false)
                         },
                         { message, exitCode ->
@@ -151,6 +161,7 @@ class SopsService(
                                 errors[file.path] = message
                             }
 
+                            EditorNotifications.getInstance(project).updateAllNotifications()
                             file.refresh(true, false)
                         }
                     )

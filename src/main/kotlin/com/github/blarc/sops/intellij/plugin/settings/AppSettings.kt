@@ -1,5 +1,7 @@
 package com.github.blarc.sops.intellij.plugin.settings
 
+import com.github.blarc.sops.intellij.plugin.notifications.Notification
+import com.github.blarc.sops.intellij.plugin.notifications.sendNotification
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
@@ -20,6 +22,9 @@ class AppSettings : PersistentStateComponent<AppSettings> {
             get() = ApplicationManager.getApplication().getService(AppSettings::class.java)
     }
 
+    private var hits = 0
+    var requestSupport = true
+    var lastVersion: String? = null
     var sopsPath: String? = null
     var sopsEnvironment: Map<String, String> = mapOf(
         Pair("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
@@ -34,6 +39,15 @@ class AppSettings : PersistentStateComponent<AppSettings> {
         // If no path is configured, try to detect it
         if (sopsPath.isNullOrBlank()) {
             setDefaultSopsPath()
+        }
+    }
+
+    fun recordHit() {
+        hits++
+        // prevent overflow
+        hits %= 100
+        if (requestSupport && hits == 0) {
+            sendNotification(Notification.star())
         }
     }
 
