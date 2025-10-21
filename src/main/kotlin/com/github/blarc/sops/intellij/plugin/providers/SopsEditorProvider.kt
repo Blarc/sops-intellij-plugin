@@ -3,11 +3,13 @@ package com.github.blarc.sops.intellij.plugin.providers
 import com.github.blarc.sops.intellij.plugin.SopsUtil.isSopsFileBasedOnContent
 import com.github.blarc.sops.intellij.plugin.services.SopsService
 import com.github.blarc.sops.intellij.plugin.services.SopsVcsService
+import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.fileEditor.*
 import com.intellij.openapi.fileEditor.impl.text.TextEditorProvider
 import com.intellij.openapi.project.DumbAware
@@ -54,6 +56,15 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
             (editor as? Disposable)?.let { Disposer.register(this, it) }
             (previewEditor as? Disposable)?.let { Disposer.register(this, it) }
 
+            editor.document.addDocumentListener(object : DocumentListener {
+                override fun documentChanged(event: com.intellij.openapi.editor.event.DocumentEvent) {
+                    if (AppSettings.instance.sopsEncryptOnChange) {
+                        editor.project?.service<SopsService>()
+                            ?.editEncrypt(file, getDecryptedText(), originalDecryptedText, originalEncryptedText)
+                    }
+                }
+            })
+
             editor.project?.let { project ->
                 project.service<SopsVcsService>().getLastCommitContent(file) { content ->
                     if (content != null) {
@@ -61,8 +72,8 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                     }
                     // Content might not be encrypted, so decryption might fail
                     // But since this content might be outdated, we do not want to show an error
-                    project.service<SopsService>().decrypt(originalEncryptedText, {
-                        decryptedText -> originalDecryptedText = decryptedText
+                    project.service<SopsService>().decrypt(originalEncryptedText, { decryptedText ->
+                        originalDecryptedText = decryptedText
                     })
                 }
             }
@@ -73,7 +84,7 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
 
         fun decrypt() {
             editor.project?.let { project ->
-                project.service<SopsService>().decrypt(file, false,{ decryptedContent ->
+                project.service<SopsService>().decrypt(file, false, { decryptedContent ->
                     withContext(Dispatchers.EDT) {
                         WriteAction.run<Throwable> {
                             editor.document.setText(decryptedContent)

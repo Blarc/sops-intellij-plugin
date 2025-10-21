@@ -29,6 +29,7 @@ class AppSettings : PersistentStateComponent<AppSettings> {
     var sopsEnvironment: Map<String, String> = mapOf(
         Pair("SOPS_AGE_KEY_FILE", "~/.config/sops/age/keys.txt")
     )
+    var sopsEncryptOnChange = false
 
     override fun getState(): AppSettings {
         return this

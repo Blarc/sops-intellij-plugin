@@ -57,17 +57,24 @@ class AppSettingsConfigurable : BoundConfigurable(message("name")) {
         }
 
         row {
+            label(message("settings.environment"))
+                .widthGroup("label")
+            cell(EnvironmentVariablesTextFieldWithBrowseButton())
+                .align(AlignX.FILL)
+                .bind(
+                    componentSet = { c, s -> c.envs = s },
+                    componentGet = { c -> c.envs },
+                    prop = AppSettings.instance::sopsEnvironment.toMutableProperty()
+                )
+        }
+
+        row {
             panel {
                 row {
-                    label(message("settings.environment"))
+                    label(message("settings.encryptOnChange"))
                         .widthGroup("label")
-                    cell(EnvironmentVariablesTextFieldWithBrowseButton())
-                        .align(AlignX.FILL)
-                        .bind(
-                            componentSet = { c, s -> c.envs = s },
-                            componentGet = { c -> c.envs },
-                            prop = AppSettings.instance::sopsEnvironment.toMutableProperty()
-                        )
+                    checkBox("")
+                        .bindSelected(AppSettings.instance::sopsEncryptOnChange)
                 }
             }.align(AlignY.TOP)
         }.resizableRow()

@@ -5,6 +5,7 @@
 ### Added
 
 - Notifications and links in settings for support.
+- Option to automatically encrypt when the file changes.
 
 ## [1.2.0] - 2025-10-21
 
