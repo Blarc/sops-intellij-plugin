@@ -34,7 +34,7 @@
     <resource-bundle>messages.SopsBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <applicationConfigurable
+        <projectConfigurable
                 parentId="tools"
                 instance="com.github.blarc.sops.intellij.plugin.settings.AppSettingsConfigurable"
                 key="name"

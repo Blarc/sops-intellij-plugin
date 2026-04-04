@@ -1,9 +1,12 @@
 package com.github.blarc.sops.intellij.plugin
 
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
+import com.github.blarc.sops.intellij.plugin.settings.ProjectSettings
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.*
 import com.intellij.execution.util.ExecUtil
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
@@ -18,11 +21,14 @@ object SopsWrapper {
 
     suspend fun version(
         sopsPath: String,
+        project: Project,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
         run(
-            sopsPath, "--version",
+            sopsPath,
+            "--version",
+            project,
             onSuccess = { result -> onSuccess(result.lines().first()) },
             onError = onError
         )
@@ -30,24 +36,27 @@ object SopsWrapper {
 
     suspend fun encrypt(
         file: VirtualFile,
+        project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
-        run("encrypt", file, inPlace, onSuccess, onError)
+        run("encrypt", project, file, inPlace, onSuccess, onError)
     }
 
     suspend fun decrypt(
         file: VirtualFile,
+        project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
-        run("decrypt", file, inPlace, onSuccess, onError)
+        run("decrypt", project, file, inPlace, onSuccess, onError)
     }
 
     suspend fun decrypt(
         text: String,
+        project: Project,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
@@ -58,11 +67,12 @@ object SopsWrapper {
         tmpFile.deleteOnExit()
 
         val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(tmpFile)
-        run("decrypt", file!!, false, onSuccess, onError)
+        run("decrypt", project, file!!, false, onSuccess, onError)
     }
 
     suspend fun edit(
         file: VirtualFile,
+        project: Project,
         newText: String?,
         onSuccess: suspend () -> Unit = {},
         onError: suspend (String, Int) -> Unit = { _, _ -> }
@@ -73,7 +83,7 @@ object SopsWrapper {
             onError("Sops path not configured", 1)
             return
         }
-        val command = buildCommand(sopsPath, file.parent.path)
+        val command = buildCommand(sopsPath, project, file.parent.path)
 
         val scriptFiles = ScriptUtil.createScriptFiles()
         val editorPath: String = scriptFiles.script.toAbsolutePath().toString()
@@ -130,6 +140,7 @@ object SopsWrapper {
 
     suspend fun run(
         sopsCommand: String,
+        project: Project,
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
@@ -140,18 +151,19 @@ object SopsWrapper {
             onError("Sops path not configured")
             return
         }
-        run(sopsPath, sopsCommand, file, inPlace, onSuccess, onError)
+        run(sopsPath, sopsCommand, project, file, inPlace, onSuccess, onError)
     }
 
     suspend fun run(
         sopsPath: String,
         sopsCommand: String,
+        project: Project,
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit
     ) {
-        val command = buildCommand(sopsPath, file?.parent?.path)
+        val command = buildCommand(sopsPath, project, file?.parent?.path)
         command.addParameter(sopsCommand)
         if (inPlace) {
             command.addParameter("--in-place")
@@ -176,10 +188,11 @@ object SopsWrapper {
         }
     }
 
-    private fun buildCommand(sopsPath: String, cwd: String? = null): GeneralCommandLine {
+    private fun buildCommand(sopsPath: String, project: Project, cwd: String? = null): GeneralCommandLine {
+        val projectSettings = project.service<ProjectSettings>()
         val command: GeneralCommandLine = GeneralCommandLine(sopsPath)
             .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
-            .withEnvironment(AppSettings.instance.sopsEnvironment)
+            .withEnvironment(projectSettings.sopsProjectEnvironment + AppSettings.instance.sopsEnvironment)
             .withCharset(StandardCharsets.UTF_8)
             .withWorkDirectory(cwd)
 

@@ -3,16 +3,18 @@ package com.github.blarc.sops.intellij.plugin.settings
 import com.github.blarc.sops.intellij.plugin.SopsBundle
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.notBlank
-import com.intellij.execution.configuration.EnvironmentVariablesComponent
 import com.intellij.execution.configuration.EnvironmentVariablesTextFieldWithBrowseButton
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.BoundConfigurable
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.*
 
-class AppSettingsConfigurable : BoundConfigurable(message("name")) {
+// Most of the settings are global, but we use project configurable to set environment variables per project
+class AppSettingsConfigurable(val project: Project) : BoundConfigurable(message("name")) {
 
     val sopsPathTextField = TextFieldWithBrowseButton()
     val sopsPathVerifyLabel = JBLabel()
@@ -36,7 +38,7 @@ class AppSettingsConfigurable : BoundConfigurable(message("name")) {
                 }
 
             button(message("settings.verify")) {
-                AppService.instance.version(
+                project.service<ProjectService>().version(
                     sopsPathTextField.text,
                     { result ->
                         sopsPathVerifyLabel.text = "✓ $result"
@@ -65,6 +67,18 @@ class AppSettingsConfigurable : BoundConfigurable(message("name")) {
                     componentSet = { c, s -> c.envs = s },
                     componentGet = { c -> c.envs },
                     prop = AppSettings.instance::sopsEnvironment.toMutableProperty()
+                )
+        }
+
+        row {
+            label(message("settings.project.environment"))
+                .widthGroup("label")
+            cell(EnvironmentVariablesTextFieldWithBrowseButton())
+                .align(AlignX.FILL)
+                .bind(
+                    componentSet = { c, s -> c.envs = s },
+                    componentGet = { c -> c.envs },
+                    prop = project.service<ProjectSettings>()::sopsProjectEnvironment.toMutableProperty()
                 )
         }
 

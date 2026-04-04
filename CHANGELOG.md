@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support for per-project environment variable configuration for SOPS.
+
 ### Changed
 
 - Remove SOPS_AGE_KEY_FILE from default environment variables.
