@@ -29,10 +29,6 @@ jobs:
       - name: Fetch Sources
         uses: actions/checkout@v6.0.2
 
-      # Validate wrapper
-      - name: Gradle Wrapper Validation
-        uses: gradle/wrapper-validation-action@v3.5.0
-
       # Setup Java 21 environment for the next steps
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -40,6 +36,10 @@ jobs:
           distribution: adopt
           java-version: 21
           cache: gradle
+
+      # Setup Gradle
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
 
       # Set environment variables
       - name: Export Properties
