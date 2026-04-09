@@ -33,7 +33,8 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        return SopsEditor.create(LightVirtualFile(), file, project)
+        val decryptedFile = LightVirtualFile(file.name, file.fileType, "")
+        return SopsEditor.create(decryptedFile, file, project)
     }
 
     override fun getEditorTypeId(): String {

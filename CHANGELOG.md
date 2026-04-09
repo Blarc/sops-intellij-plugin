@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Ensure that the decrypted file is initialized with the correct file type in SopsEditor.
+
 ## [1.4.0] - 2026-04-06
 
 ### Added
