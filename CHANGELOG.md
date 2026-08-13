@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Decrypt the content of the last commit with the store of the file it comes from, instead of always
+  decrypting it as YAML.
+
 ## [1.4.1] - 2026-04-09
 
 ### Fixed
