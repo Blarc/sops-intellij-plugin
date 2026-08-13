@@ -56,16 +56,17 @@ class SopsService(
 
     fun decrypt(
         text: String,
+        extension: String? = null,
         onSuccess: suspend (decryptedText: String) -> Unit,
         onError: suspend (message: String?) -> Unit = {}
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.decrypting")) {
                 AppSettings.instance.recordHit()
-                SopsWrapper.decrypt(text, project, {
+                SopsWrapper.decrypt(text, project, extension, onSuccess = {
                     AppSettings.instance.recordHit()
                     onSuccess(it)
-                }, onError)
+                }, onError = onError)
             }
         }
     }
@@ -84,7 +85,7 @@ class SopsService(
 
                 val originalEncryptedText = file.getLastCommitContent(project)
                 var originalDecryptedText = ""
-                SopsWrapper.decrypt(originalEncryptedText.orEmpty(), project, onSuccess = {
+                SopsWrapper.decrypt(originalEncryptedText.orEmpty(), project, file.extension, onSuccess = {
                     originalDecryptedText = it
                 })
 

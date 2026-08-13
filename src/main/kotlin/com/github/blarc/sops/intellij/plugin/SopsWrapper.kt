@@ -54,13 +54,18 @@ object SopsWrapper {
         run("decrypt", project, file, inPlace, onSuccess, onError)
     }
 
+    /**
+     * SOPS determines the input format from the file extension, so [extension] should be the extension
+     * of the file the text comes from, when it is known.
+     */
     suspend fun decrypt(
         text: String,
         project: Project,
+        extension: String? = null,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
-        val tmpFilePath = Files.createTempFile("sopsIntellijPlugin", ".yaml")
+        val tmpFilePath = Files.createTempFile("sopsIntellijPlugin", ".${extension ?: "yaml"}")
         Files.writeString(tmpFilePath, text)
         // Delete on JVM exit
         val tmpFile = tmpFilePath.toFile()

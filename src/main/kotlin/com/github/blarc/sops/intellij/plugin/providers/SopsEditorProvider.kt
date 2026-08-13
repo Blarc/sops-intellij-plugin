@@ -73,7 +73,7 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                     }
                     // Content might not be encrypted, so decryption might fail
                     // But since this content might be outdated, we do not want to show an error
-                    project.service<SopsService>().decrypt(originalEncryptedText, { decryptedText ->
+                    project.service<SopsService>().decrypt(originalEncryptedText, file.extension, { decryptedText ->
                         originalDecryptedText = decryptedText
                     })
                 }
