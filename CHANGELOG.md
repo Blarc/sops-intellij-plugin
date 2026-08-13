@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- Show VCS change markers in the gutter of the decrypted editor, comparing the decrypted content with the
+  decrypted content of the last commit.
+
 ### Fixed
 
 - Decrypt the content of the last commit with the store of the file it comes from, instead of always
