@@ -90,6 +90,12 @@ class AppSettingsConfigurable(val project: Project) : BoundConfigurable(message(
                     checkBox("")
                         .bindSelected(AppSettings.instance::sopsEncryptOnChange)
                 }
+                row {
+                    label(message("settings.decryptDiff"))
+                        .widthGroup("label")
+                    checkBox("")
+                        .bindSelected(AppSettings.instance::sopsDecryptDiff)
+                }.rowComment(message("settings.decryptDiff.comment"))
             }.align(AlignY.TOP)
         }.resizableRow()
 

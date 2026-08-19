@@ -28,6 +28,7 @@ class AppSettings : PersistentStateComponent<AppSettings> {
     var sopsPath: String? = null
     var sopsEnvironment: Map<String, String> = mapOf()
     var sopsEncryptOnChange = false
+    var sopsDecryptDiff = false
 
     override fun getState(): AppSettings {
         return this
