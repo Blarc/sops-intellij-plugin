@@ -126,17 +126,18 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
                 // Content might not be encrypted, so decryption might fail
                 // But since this content might be outdated, we do not want to show an error
                 project.service<SopsService>().decrypt(
-                    originalEncryptedText,
+                    text = originalEncryptedText,
                     // SOPS picks the store from the file extension, so decrypting the content of the last
                     // commit as anything else returns it in another format, which the gutter would then
                     // show as a difference. A binary store file, for example, comes back wrapped in YAML.
-                    file.extension,
-                    { decryptedText ->
+                    extension = file.extension,
+                    workingDirectory = file.parent?.path,
+                    onSuccess = { decryptedText ->
                         originalDecryptedText = decryptedText
                         isBaseRevisionLoading = false
                         updateLineStatusTracker()
                     },
-                    {
+                    onError = {
                         isBaseRevisionLoading = false
                     }
                 )

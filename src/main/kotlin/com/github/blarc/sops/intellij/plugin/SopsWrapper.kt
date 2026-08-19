@@ -62,6 +62,7 @@ object SopsWrapper {
         text: String,
         project: Project,
         extension: String? = null,
+        workingDirectory: String? = null,
         onSuccess: suspend (String) -> Unit,
         onError: suspend (String) -> Unit = {}
     ) {
@@ -72,7 +73,16 @@ object SopsWrapper {
         tmpFile.deleteOnExit()
 
         val file = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(tmpFile)
-        run("decrypt", project, file!!, false, onSuccess, onError)
+        run(
+            "decrypt",
+            project,
+            file!!,
+            false,
+            onSuccess,
+            onError,
+            workingDirectory = workingDirectory,
+            fileArgument = tmpFilePath.toString()
+        )
     }
 
     suspend fun edit(
@@ -149,14 +159,26 @@ object SopsWrapper {
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit
+        onError: suspend (String) -> Unit,
+        workingDirectory: String? = null,
+        fileArgument: String? = null
     ) {
         val sopsPath = AppSettings.instance.sopsPath
         if (sopsPath == null) {
             onError("Sops path not configured")
             return
         }
-        run(sopsPath, sopsCommand, project, file, inPlace, onSuccess, onError)
+        run(
+            sopsPath,
+            sopsCommand,
+            project,
+            file,
+            inPlace,
+            onSuccess,
+            onError,
+            workingDirectory,
+            fileArgument
+        )
     }
 
     suspend fun run(
@@ -166,15 +188,21 @@ object SopsWrapper {
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit
+        onError: suspend (String) -> Unit,
+        workingDirectory: String? = null,
+        fileArgument: String? = null
     ) {
-        val command = buildCommand(sopsPath, project, file?.parent?.path)
+        val command = buildCommand(
+            sopsPath,
+            project,
+            workingDirectory ?: file?.parent?.path
+        )
         command.addParameter(sopsCommand)
         if (inPlace) {
             command.addParameter("--in-place")
         }
         if (file != null) {
-            command.addParameter(file.name)
+            command.addParameter(fileArgument ?: file.name)
         }
 
         val output = try {

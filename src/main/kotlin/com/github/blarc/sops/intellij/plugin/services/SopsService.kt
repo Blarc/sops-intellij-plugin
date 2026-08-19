@@ -57,13 +57,14 @@ class SopsService(
     fun decrypt(
         text: String,
         extension: String? = null,
+        workingDirectory: String? = null,
         onSuccess: suspend (decryptedText: String) -> Unit,
         onError: suspend (message: String?) -> Unit = {}
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.decrypting")) {
                 AppSettings.instance.recordHit()
-                SopsWrapper.decrypt(text, project, extension, onSuccess = {
+                SopsWrapper.decrypt(text, project, extension, workingDirectory, onSuccess = {
                     AppSettings.instance.recordHit()
                     onSuccess(it)
                 }, onError = onError)
@@ -85,9 +86,13 @@ class SopsService(
 
                 val originalEncryptedText = file.getLastCommitContent(project)
                 var originalDecryptedText = ""
-                SopsWrapper.decrypt(originalEncryptedText.orEmpty(), project, file.extension, onSuccess = {
-                    originalDecryptedText = it
-                })
+                SopsWrapper.decrypt(
+                    text = originalEncryptedText.orEmpty(),
+                    project = project,
+                    extension = file.extension,
+                    workingDirectory = file.parent?.path,
+                    onSuccess = { originalDecryptedText = it }
+                )
 
                 // Do not change the file (metadata) if the content has not changed
                 if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
