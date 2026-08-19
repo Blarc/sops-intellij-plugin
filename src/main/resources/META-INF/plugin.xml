@@ -11,6 +11,7 @@
             <li>Automatically decrypt the content of SOPS files</li>
             <li>Show encrypted content as preview</li>
             <li>On save, encrypt the contents, if the file has changed</li>
+            <li>Compare the decrypted contents of SOPS files in the comparison window</li>
         </ul>
         <h3>Usage</h3>
         <p>To get started, install the plugin and set path to SOPS executable in plugin's settings:
@@ -63,6 +64,13 @@
         />
         <postStartupActivity
                 implementation="com.github.blarc.sops.intellij.plugin.listeners.ApplicationStartupListener"
+        />
+
+        <diff.DiffTool
+                implementation="com.github.blarc.sops.intellij.plugin.diff.SopsSideBySideDiffTool"
+        />
+        <diff.DiffTool
+                implementation="com.github.blarc.sops.intellij.plugin.diff.SopsUnifiedDiffTool"
         />
 
     </extensions>

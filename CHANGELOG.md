@@ -6,6 +6,9 @@
 
 - Show VCS change markers in the gutter of the decrypted editor, comparing the decrypted content with the
   decrypted content of the last commit.
+- Compare the decrypted contents of the files that are being compared, switching between the decrypted
+  and the encrypted contents from the toolbar of the comparison window. The setting `Decrypt contents
+  in the comparison window` decides which of the two a window starts with.
 
 ### Fixed
 

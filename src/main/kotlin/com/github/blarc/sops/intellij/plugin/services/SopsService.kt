@@ -2,9 +2,13 @@ package com.github.blarc.sops.intellij.plugin.services
 
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
 import com.github.blarc.sops.intellij.plugin.SopsWrapper
+import com.github.blarc.sops.intellij.plugin.diff.SopsDiffContents
 import com.github.blarc.sops.intellij.plugin.equalsIgnoreIndent
 import com.github.blarc.sops.intellij.plugin.getLastCommitContent
+import com.github.blarc.sops.intellij.plugin.notifications.Notification
+import com.github.blarc.sops.intellij.plugin.notifications.sendNotification
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
+import com.intellij.diff.requests.ContentDiffRequest
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteAction
@@ -68,6 +72,51 @@ class SopsService(
                     AppSettings.instance.recordHit()
                     onSuccess(it)
                 }, onError = onError)
+            }
+        }
+    }
+
+    /**
+     * Decrypts the contents of [request] that are encrypted with SOPS, remembering them in
+     * [SopsDiffContents], and then runs [onFinished] with whether all of them could be decrypted.
+     */
+    fun decryptDiffContents(request: ContentDiffRequest, onFinished: suspend (success: Boolean) -> Unit = {}) {
+        cs.launch {
+            withBackgroundProgress(project, message("background.decrypting")) {
+                for (content in SopsDiffContents.encryptedContents(request)) {
+                    val encryptedText = readAction { content.document.text }
+                    if (SopsDiffContents.isDecrypted(encryptedText)) {
+                        continue
+                    }
+
+                    var decryptedText: String? = null
+                    var errorMessage: String? = null
+                    SopsWrapper.decrypt(
+                        text = encryptedText,
+                        project = project,
+                        // SOPS picks the store from the file extension, so decrypting a content as
+                        // anything else returns it in another format. A binary store file, for
+                        // example, comes back wrapped in YAML.
+                        extension = content.highlightFile?.extension,
+                        workingDirectory = content.highlightFile?.parent?.path,
+                        onSuccess = { decryptedText = it },
+                        onError = { errorMessage = it }
+                    )
+                    val newDecryptedText = decryptedText
+                    if (newDecryptedText == null) {
+                        sendNotification(
+                            Notification(message = message("notification.diff.decrypt-failed", errorMessage.orEmpty())),
+                            project
+                        )
+                        onFinished(false)
+                        return@withBackgroundProgress
+                    }
+
+                    SopsDiffContents.remember(encryptedText, newDecryptedText)
+                    AppSettings.instance.recordHit()
+                }
+
+                onFinished(true)
             }
         }
     }
