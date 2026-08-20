@@ -1,22 +1,12 @@
 package com.github.blarc.sops.intellij.plugin
 
-import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
-import com.intellij.openapi.fileTypes.FileType
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.codeStyle.CodeStyleManager
-import com.intellij.vcsUtil.VcsUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 object SopsUtil {
 
@@ -27,19 +17,25 @@ object SopsUtil {
     )
 
     private val SOPS_DOCUMENT_KEY = Key.create<Pair<Long, Boolean>>("sops.isSopsDocument")
+    private val SOPS_FILE_KEY = Key.create<Pair<Long, Boolean>>("sops.isSopsFile")
 
-    fun isSopsFileBasedOnContent(file: VirtualFile): Boolean {
-        try {
-            val content: String = ReadAction.compute<String, RuntimeException> { LoadTextUtil.loadText(file).toString() }
-            return isSopsContent(content)
-        } catch (e: Exception) {
-            thisLogger().warn("could not get content of file ${file.name} $e")
+    /**
+     * Checks whether [file] contains SOPS metadata, caching the result until the file changes.
+     *
+     * File icon providers and file editor providers can both ask this question frequently. Keeping
+     * the cache here makes sure they make the same decision without repeatedly reading the file.
+     */
+    fun isSopsFile(file: VirtualFile): Boolean {
+        if (!file.isValid || file.isDirectory) return false
+
+        val cached = file.getUserData(SOPS_FILE_KEY)
+        if (cached != null && cached.first == file.modificationStamp) {
+            return cached.second
         }
-        return false
-    }
 
-    fun isSopsContent(content: String): Boolean {
-        return SOPS_KEYWORDS.all { content.contains(it) }
+        return isSopsFileBasedOnContent(file).also { isSopsFile ->
+            file.putUserData(SOPS_FILE_KEY, file.modificationStamp to isSopsFile)
+        }
     }
 
     /**
@@ -55,5 +51,19 @@ object SopsUtil {
         val isSopsDocument = isSopsContent(runReadAction { document.text })
         document.putUserData(SOPS_DOCUMENT_KEY, document.modificationStamp to isSopsDocument)
         return isSopsDocument
+    }
+
+    private fun isSopsFileBasedOnContent(file: VirtualFile): Boolean {
+        try {
+            val content: String = ReadAction.compute<String, RuntimeException> { LoadTextUtil.loadText(file).toString() }
+            return isSopsContent(content)
+        } catch (e: Exception) {
+            thisLogger().warn("could not get content of file ${file.name} $e")
+        }
+        return false
+    }
+
+    private fun isSopsContent(content: String): Boolean {
+        return SOPS_KEYWORDS.all { content.contains(it) }
     }
 }

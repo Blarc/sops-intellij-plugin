@@ -1,6 +1,6 @@
 package com.github.blarc.sops.intellij.plugin.providers
 
-import com.github.blarc.sops.intellij.plugin.SopsUtil.isSopsFileBasedOnContent
+import com.github.blarc.sops.intellij.plugin.SopsUtil.isSopsFile
 import com.github.blarc.sops.intellij.plugin.services.SopsService
 import com.github.blarc.sops.intellij.plugin.services.SopsVcsService
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
@@ -30,7 +30,7 @@ class SopsEditorProvider : FileEditorProvider, DumbAware {
     override fun accept(project: Project, file: VirtualFile): Boolean {
         if (!file.isValid) return false
         PsiManager.getInstance(project).findFile(file) ?: return false
-        return isSopsFileBasedOnContent(file)
+        return isSopsFile(file)
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {

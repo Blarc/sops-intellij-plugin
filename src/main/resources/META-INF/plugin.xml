@@ -47,6 +47,10 @@
                 order="first"
         />
 
+        <fileIconProvider
+                implementation="com.github.blarc.sops.intellij.plugin.providers.SopsFileIconProvider"
+        />
+
         <editorNotificationProvider
                 implementation="com.github.blarc.sops.intellij.plugin.providers.SopsEditorNotificationsProvider"
                 id="Sops.SopsEditorNotificationsProvider"/>
