@@ -1,0 +1,8 @@
+{
+  "secret": "ENC[AES256_GCM,data:encrypted,iv:iv,tag:tag,type:str]",
+  "sops": {
+    "lastmodified": "2026-08-20T00:00:00Z",
+    "mac": "ENC[AES256_GCM,data:mac,iv:iv,tag:tag,type:str]",
+    "version": "3.13.0"
+  }
+}

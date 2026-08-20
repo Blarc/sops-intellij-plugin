@@ -10,14 +10,9 @@ import com.intellij.openapi.vfs.VirtualFile
 
 object SopsUtil {
 
-    val SOPS_KEYWORDS: List<String> = listOf(
-        "sops",
-        "lastmodified",
-        "version"
-    )
-
     private val SOPS_DOCUMENT_KEY = Key.create<Pair<Long, Boolean>>("sops.isSopsDocument")
     private val SOPS_FILE_KEY = Key.create<Pair<Long, Boolean>>("sops.isSopsFile")
+    private val sopsDetector = SopsDetector()
 
     /**
      * Checks whether [file] contains SOPS metadata, caching the result until the file changes.
@@ -48,7 +43,7 @@ object SopsUtil {
             return cached.second
         }
 
-        val isSopsDocument = isSopsContent(runReadAction { document.text })
+        val isSopsDocument = sopsDetector.isSopsContent(runReadAction { document.text })
         document.putUserData(SOPS_DOCUMENT_KEY, document.modificationStamp to isSopsDocument)
         return isSopsDocument
     }
@@ -56,14 +51,11 @@ object SopsUtil {
     private fun isSopsFileBasedOnContent(file: VirtualFile): Boolean {
         try {
             val content: String = ReadAction.compute<String, RuntimeException> { LoadTextUtil.loadText(file).toString() }
-            return isSopsContent(content)
+            return sopsDetector.isSopsContent(content)
         } catch (e: Exception) {
             thisLogger().warn("could not get content of file ${file.name} $e")
         }
         return false
     }
 
-    private fun isSopsContent(content: String): Boolean {
-        return SOPS_KEYWORDS.all { content.contains(it) }
-    }
 }

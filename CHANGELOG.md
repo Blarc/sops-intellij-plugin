@@ -11,6 +11,10 @@
   in the comparison window` decides which of the two a window starts with.
 - Show custom icon for SOPS encrypted files.
 
+### Changed
+
+- Use regexes when detecting SOPS files in order to reduce false positives.
+
 ### Fixed
 
 - Decrypt the content of the last commit with the store of the file it comes from, instead of always
