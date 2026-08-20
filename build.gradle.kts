@@ -43,6 +43,8 @@ dependencies {
 
         // testFramework(TestFrameworkType.Platform)
     }
+
+    testImplementation(kotlin("test-junit5"))
 }
 
 // Configure Gradle IntelliJ Plugin - read more: https://github.com/JetBrains/gradle-intellij-plugin
