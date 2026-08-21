@@ -45,7 +45,7 @@ class AppSettingsConfigurable(val project: Project) : BoundConfigurable(message(
                         sopsPathVerifyLabel.foreground = JBColor.GREEN
                     },
                     { error ->
-                        sopsPathVerifyLabel.text = "✗ $error"
+                        sopsPathVerifyLabel.text = "✗ ${error.message}"
                         sopsPathVerifyLabel.foreground = JBColor.RED
                     })
             }

@@ -14,6 +14,7 @@
 ### Changed
 
 - Use regexes when detecting SOPS files in order to reduce false positives.
+- Improve error messages by trimming.
 
 ### Fixed
 

@@ -1,6 +1,7 @@
 package com.github.blarc.sops.intellij.plugin.services
 
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
+import com.github.blarc.sops.intellij.plugin.SopsError
 import com.github.blarc.sops.intellij.plugin.SopsWrapper
 import com.github.blarc.sops.intellij.plugin.diff.SopsDiffContents
 import com.github.blarc.sops.intellij.plugin.equalsIgnoreIndent
@@ -30,28 +31,28 @@ class SopsService(
     private val cs: CoroutineScope
 ) {
 
-    var errors: MutableMap<String, String> = mutableMapOf()
+    var errors: MutableMap<String, SopsError> = mutableMapOf()
 
     fun decrypt(
         file: VirtualFile,
         inPlace: Boolean = false,
         onSuccess: suspend (decryptedText: String) -> Unit,
-        onError: suspend (message: String?) -> Unit = {}
+        onError: suspend (error: SopsError) -> Unit = {}
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.decrypting")) {
                 SopsWrapper.decrypt(
                     file, project, inPlace,
                     { decryptedText ->
-                        errors[file.path] = ""
+                        clearError(file.path)
                         EditorNotifications.getInstance(project).updateAllNotifications()
                         AppSettings.instance.recordHit()
                         onSuccess(decryptedText)
                     },
-                    { message ->
-                        errors[file.path] = message
+                    { error ->
+                        updateError(file, error)
                         EditorNotifications.getInstance(project).updateAllNotifications()
-                        onError(message)
+                        onError(error)
                     }
                 )
             }
@@ -63,7 +64,7 @@ class SopsService(
         extension: String? = null,
         workingDirectory: String? = null,
         onSuccess: suspend (decryptedText: String) -> Unit,
-        onError: suspend (message: String?) -> Unit = {}
+        onError: suspend (error: SopsError) -> Unit = {}
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.decrypting")) {
@@ -90,7 +91,7 @@ class SopsService(
                     }
 
                     var decryptedText: String? = null
-                    var errorMessage: String? = null
+                    var error: SopsError? = null
                     SopsWrapper.decrypt(
                         text = encryptedText,
                         project = project,
@@ -100,12 +101,12 @@ class SopsService(
                         extension = content.highlightFile?.extension,
                         workingDirectory = content.highlightFile?.parent?.path,
                         onSuccess = { decryptedText = it },
-                        onError = { errorMessage = it }
+                        onError = { error = it }
                     )
                     val newDecryptedText = decryptedText
                     if (newDecryptedText == null) {
                         sendNotification(
-                            Notification(message = message("notification.diff.decrypt-failed", errorMessage.orEmpty())),
+                            Notification(message = message("notification.diff.decrypt-failed", error?.message.orEmpty())),
                             project
                         )
                         onFinished(false)
@@ -125,7 +126,7 @@ class SopsService(
         file: VirtualFile,
         inPlace: Boolean = false,
         onSuccess: suspend (decryptedText: String) -> Unit,
-        onError: suspend (message: String?) -> Unit = {}
+        onError: suspend (error: SopsError) -> Unit = {}
     ) {
         cs.launch {
             withBackgroundProgress(project, message("background.encrypting")) {
@@ -150,7 +151,7 @@ class SopsService(
                             file.writeText(originalEncryptedText.orEmpty())
                         }
                     }
-                    errors[file.path] = ""
+                    clearError(file.path)
                     EditorNotifications.getInstance(project).updateAllNotifications()
                     onSuccess(originalDecryptedText)
                     return@withBackgroundProgress
@@ -159,15 +160,15 @@ class SopsService(
                 SopsWrapper.encrypt(
                     file, project, inPlace,
                     {
-                        errors[file.path] = ""
+                        clearError(file.path)
                         EditorNotifications.getInstance(project).updateAllNotifications()
                         AppSettings.instance.recordHit()
                         onSuccess(it)
                     },
-                    { message ->
-                        errors[file.path] = message
+                    { error ->
+                        updateError(file, error)
                         EditorNotifications.getInstance(project).updateAllNotifications()
-                        onError(message)
+                        onError(error)
                     }
                 )
             }
@@ -193,7 +194,7 @@ class SopsService(
                             file.writeText(originalEncryptedText)
                         }
                     }
-                    errors[file.path] = ""
+                    clearError(file.path)
                     EditorNotifications.getInstance(project).updateAllNotifications()
                     AppSettings.instance.recordHit()
                     return@withBackgroundProgress
@@ -203,19 +204,13 @@ class SopsService(
                     SopsWrapper.edit(
                         file, project,newDecryptedText,
                         {
-                            errors[file.path] = ""
+                            clearError(file.path)
                             EditorNotifications.getInstance(project).updateAllNotifications()
                             AppSettings.instance.recordHit()
                             file.refresh(true, false)
                         },
-                        { message, exitCode ->
-
-                            // ignore "File has not changed" error
-                            // https://github.com/getsops/sops/blob/main/cmd/sops/codes/codes.go#L29
-                            if (exitCode != 200) {
-                                errors[file.path] = message
-                            }
-
+                        { error ->
+                            updateError(file, error)
                             EditorNotifications.getInstance(project).updateAllNotifications()
                             file.refresh(true, false)
                         }
@@ -223,5 +218,20 @@ class SopsService(
                 }
             }
         }
+    }
+
+    private fun updateError(file: VirtualFile, error: SopsError) {
+//        if (error is SopsError.FileNotChanged) {
+//            clearError(file.path)
+//
+//        } else {
+//            errors[file.path] = error
+//        }
+        errors[file.path] = error
+
+    }
+
+    internal fun clearError(filePath: String) {
+        errors.remove(filePath)
     }
 }

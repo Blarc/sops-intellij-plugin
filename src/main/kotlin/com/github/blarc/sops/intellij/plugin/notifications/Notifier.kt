@@ -1,7 +1,6 @@
 package com.github.blarc.sops.intellij.plugin.notifications
 
 import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 
@@ -9,7 +8,7 @@ private const val IMPORTANT_GROUP_ID = "sops.notification.important"
 private const val GENERAL_GROUP_ID = "sops.notification.general"
 
 fun sendNotification(notification : Notification, project : Project? = null) {
-    val groupId = when(notification.type) {
+    val groupId = when(notification.duration) {
         Notification.Type.PERSISTENT -> IMPORTANT_GROUP_ID
         Notification.Type.TRANSIENT -> GENERAL_GROUP_ID
     }
@@ -21,7 +20,7 @@ fun sendNotification(notification : Notification, project : Project? = null) {
     val intellijNotification = notificationManager.createNotification(
         notification.title ?: "",
         notification.message,
-        NotificationType.INFORMATION
+        notification.type
     )
 
     notification.actions.forEach { action ->

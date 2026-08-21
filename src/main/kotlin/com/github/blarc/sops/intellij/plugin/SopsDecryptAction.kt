@@ -1,5 +1,7 @@
 package com.github.blarc.sops.intellij.plugin
 
+import com.github.blarc.sops.intellij.plugin.notifications.Notification
+import com.github.blarc.sops.intellij.plugin.notifications.sendNotification
 import com.github.blarc.sops.intellij.plugin.services.SopsService
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -28,7 +30,7 @@ class SopsDecryptAction : AnAction(), DumbAware {
                     fileEditorManager.openFile(file, true)
                 }
             }
-        }, { message -> println("Failed: $message") })
+        }, { error -> sendNotification(Notification.error(error)) })
     }
 
     override fun update(e: AnActionEvent) {

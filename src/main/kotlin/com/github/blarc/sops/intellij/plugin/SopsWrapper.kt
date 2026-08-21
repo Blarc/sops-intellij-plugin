@@ -2,6 +2,7 @@ package com.github.blarc.sops.intellij.plugin
 
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.github.blarc.sops.intellij.plugin.settings.ProjectSettings
+import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.*
 import com.intellij.execution.util.ExecUtil
@@ -14,16 +15,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.util.concurrent.atomic.AtomicBoolean
 
 object SopsWrapper {
+
+    private const val EDITOR_PROMPT = " Press enter to return to the editor, or Ctrl+C to exit."
+    private val SOPS_DIAGNOSTIC = Regex("""msg="([^"]*)"(?:\s+error="([^"]*)")?""")
 
     suspend fun version(
         sopsPath: String,
         project: Project,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit = {}
+        onError: suspend (SopsError) -> Unit = {}
     ) {
         run(
             sopsPath,
@@ -39,7 +45,7 @@ object SopsWrapper {
         project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit = {}
+        onError: suspend (SopsError) -> Unit = {}
     ) {
         run("encrypt", project, file, inPlace, onSuccess, onError)
     }
@@ -49,7 +55,7 @@ object SopsWrapper {
         project: Project,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit = {}
+        onError: suspend (SopsError) -> Unit = {}
     ) {
         run("decrypt", project, file, inPlace, onSuccess, onError)
     }
@@ -64,7 +70,7 @@ object SopsWrapper {
         extension: String? = null,
         workingDirectory: String? = null,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit = {}
+        onError: suspend (SopsError) -> Unit = {}
     ) {
         val tmpFilePath = Files.createTempFile("sopsIntellijPlugin", ".${extension ?: "yaml"}")
         Files.writeString(tmpFilePath, text)
@@ -90,12 +96,12 @@ object SopsWrapper {
         project: Project,
         newText: String?,
         onSuccess: suspend () -> Unit = {},
-        onError: suspend (String, Int) -> Unit = { _, _ -> }
+        onError: suspend (SopsError) -> Unit = {}
     ) {
 
         val sopsPath = AppSettings.instance.sopsPath
-        if (sopsPath == null) {
-            onError("Sops path not configured", 1)
+        if (sopsPath.isNullOrBlank()) {
+            onError(SopsError.ExecutableNotSet)
             return
         }
         val command = buildCommand(sopsPath, project, file.parent.path)
@@ -109,9 +115,17 @@ object SopsWrapper {
         command.addParameter(file.name)
 
         var exitCode = 0
-        var output = ""
+        val output = StringBuilder()
+        val errorOutput = StringBuilder()
+        val inputSent = AtomicBoolean(false)
 
-        val processHandler = OSProcessHandler(command)
+        val processHandler = try {
+            OSProcessHandler(command)
+        } catch (e: ExecutionException) {
+            FileUtils.deleteQuietly(scriptFiles.directory.toFile())
+            onError(SopsError.ProcessNotCreated(e.localizedMessage.orEmpty()))
+            return
+        }
         processHandler.addProcessListener(object : ProcessAdapter() {
 
             override fun processTerminated(event: ProcessEvent) {
@@ -124,11 +138,32 @@ object SopsWrapper {
             }
 
             override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
-                output += event.text
+                synchronized(output) {
+                    output.append(event.text)
+                }
 
-                if (null != event.text && ScriptUtil.INPUT_START_IDENTIFIER == event.text.trim()) {
-                    IOUtils.write(newText, event.processHandler.processInput, file.charset)
-                    event.processHandler.processInput!!.close()
+                if (ProcessOutputType.isStderr(outputType)) {
+                    synchronized(errorOutput) {
+                        errorOutput.append(event.text)
+                    }
+                }
+
+                if (
+                    ScriptUtil.INPUT_START_IDENTIFIER == event.text.trim() &&
+                    inputSent.compareAndSet(false, true) &&
+                    !event.processHandler.isProcessTerminated
+                ) {
+                    // SOPS can report an error and destroy the process while this output event is
+                    // still queued, which closes the editor script's stdin.
+                    try {
+                        event.processHandler.processInput?.let { processInput ->
+                            IOUtils.write(newText, processInput, file.charset)
+                            processInput.close()
+                        }
+                    } catch (_: IOException) {
+                        // The process failed, so its closed stdin is expected. The exit code and
+                        // captured output below report the actual SOPS failure.
+                    }
                 }
 
                 if (ProcessOutputType.isStderr(outputType)) {
@@ -148,8 +183,12 @@ object SopsWrapper {
 
         if (exitCode == 0) {
             onSuccess.invoke()
+        } else if (exitCode == 200) {
+            onError.invoke(SopsError.FileNotChanged)
         } else {
-            onError.invoke(output, exitCode)
+            val processOutput = synchronized(output) { output.toString() }
+            val processErrorOutput = synchronized(errorOutput) { errorOutput.toString() }
+            onError.invoke(SopsError.CommandFailed(formatEditError(processErrorOutput.ifBlank { processOutput })))
         }
     }
 
@@ -159,13 +198,13 @@ object SopsWrapper {
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit,
+        onError: suspend (SopsError) -> Unit,
         workingDirectory: String? = null,
         fileArgument: String? = null
     ) {
         val sopsPath = AppSettings.instance.sopsPath
-        if (sopsPath == null) {
-            onError("Sops path not configured")
+        if (sopsPath.isNullOrBlank()) {
+            onError(SopsError.ExecutableNotSet)
             return
         }
         run(
@@ -188,10 +227,19 @@ object SopsWrapper {
         file: VirtualFile? = null,
         inPlace: Boolean = false,
         onSuccess: suspend (String) -> Unit,
-        onError: suspend (String) -> Unit,
+        onError: suspend (SopsError) -> Unit,
         workingDirectory: String? = null,
         fileArgument: String? = null
     ) {
+        if (sopsPath.isBlank()) {
+            onError(SopsError.ExecutableNotSet)
+            return
+        }
+        if (sopsCommand.isBlank()) {
+            onError(SopsError.CommandFailed("SOPS command is not configured."))
+            return
+        }
+
         val command = buildCommand(
             sopsPath,
             project,
@@ -205,21 +253,53 @@ object SopsWrapper {
             command.addParameter(fileArgument ?: file.name)
         }
 
+        execute(command, onSuccess, onError)
+    }
+
+    internal suspend fun execute(
+        command: GeneralCommandLine,
+        onSuccess: suspend (String) -> Unit,
+        onError: suspend (SopsError) -> Unit
+    ) {
         val output = try {
             withContext(Dispatchers.IO) {
                 ExecUtil.execAndGetOutput(command)
             }
-        } catch (e: ProcessNotCreatedException) {
-            onError(e.localizedMessage)
+        } catch (e: ExecutionException) {
+            onError(SopsError.ProcessNotCreated(e.localizedMessage.orEmpty()))
             return
         }
 
         if (output.exitCode != 0) {
-            onError(output.stderr)
+            onError(SopsError.CommandFailed(output.stderr))
         } else {
             onSuccess(output.stdout)
         }
     }
+
+    internal fun formatEditError(output: String): String = output
+        .lineSequence()
+        .map { it.replace(ScriptUtil.INPUT_START_IDENTIFIER, "").trim().removePrefix("[CMD]").trim() }
+        .filter { it.isNotBlank() }
+        .map { formatSopsDiagnostic(it) ?: it }
+        .distinct()
+        .joinToString("\n")
+
+    private fun formatSopsDiagnostic(line: String): String? {
+        val match = SOPS_DIAGNOSTIC.find(line) ?: return null
+        val message = unescapeLogValue(match.groupValues[1])
+            .removeSuffix(EDITOR_PROMPT)
+            .removeSuffix(".")
+        val detail = match.groupValues.getOrNull(2)
+            ?.let(::unescapeLogValue)
+            ?.takeIf { it.isNotBlank() }
+
+        return if (detail == null) message else "$message: $detail"
+    }
+
+    private fun unescapeLogValue(value: String): String = value
+        .replace("\\\"", "\"")
+        .replace("\\\\", "\\")
 
     private fun buildCommand(sopsPath: String, project: Project, cwd: String? = null): GeneralCommandLine {
         val projectSettings = project.service<ProjectSettings>()

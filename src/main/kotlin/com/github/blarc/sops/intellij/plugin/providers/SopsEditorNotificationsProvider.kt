@@ -1,8 +1,9 @@
 package com.github.blarc.sops.intellij.plugin.providers
 
+import com.github.blarc.sops.intellij.plugin.SopsBundle
+import com.github.blarc.sops.intellij.plugin.SopsError
 import com.github.blarc.sops.intellij.plugin.services.SopsService
 import com.intellij.codeInsight.hint.HintUtil
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -10,8 +11,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.EditorNotificationProvider
+import com.intellij.openapi.util.text.StringUtil
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import java.util.function.Function
 
 class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNotificationProvider {
@@ -20,19 +21,30 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
         file: VirtualFile
     ) = Function { editor: FileEditor ->
         if (editor is SopsEditorProvider.SopsEditor) {
-            val error = project.service<SopsService>().errors[file.path]
+            val error = project.service<SopsService>().errors[file.path] ?: return@Function null
 
-            if (!error.isNullOrBlank()) {
-                val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
-                panel.text = error
-                panel.createActionLabel("Try again") {
-                    val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
-                    if (editor is SopsEditorProvider.SopsEditor) {
-                        editor.decrypt()
-                    }
-                }
-                return@Function panel
+            if (error is SopsError.FileNotChanged) {
+                return@Function null
             }
+
+            val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
+            panel.text = "<html>${StringUtil.escapeXmlEntities(error.message)
+                .replace("\r\n", "<br>")
+                .replace("\n", "<br>")}</html>"
+
+            if (error is SopsError.ExecutableNotSet || error is SopsError.ProcessNotCreated) {
+                panel.createActionLabel("Open settings") {
+                    SopsBundle.openPluginSettings(project)
+                }
+            }
+
+            panel.createActionLabel("Try again") {
+                val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
+                if (editor is SopsEditorProvider.SopsEditor) {
+                    editor.decrypt()
+                }
+            }
+            return@Function panel
         }
         return@Function null
     }

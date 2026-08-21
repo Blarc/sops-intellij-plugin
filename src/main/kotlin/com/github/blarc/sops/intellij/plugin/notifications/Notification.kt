@@ -2,8 +2,10 @@ package com.github.blarc.sops.intellij.plugin.notifications
 
 import com.github.blarc.sops.intellij.plugin.SopsBundle
 import com.github.blarc.sops.intellij.plugin.SopsBundle.message
+import com.github.blarc.sops.intellij.plugin.SopsError
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.intellij.ide.browsers.BrowserLauncher
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import java.net.URI
@@ -12,7 +14,8 @@ data class Notification(
     val title: String? = null,
     val message: String,
     val actions: Set<NotificationAction> = setOf(),
-    val type: Type = Type.PERSISTENT
+    val duration: Type = Type.PERSISTENT,
+    val type: NotificationType = NotificationType.INFORMATION
 ) {
     enum class Type {
         PERSISTENT,
@@ -22,7 +25,9 @@ data class Notification(
     companion object {
         private val DEFAULT_TITLE = message("notifications.title")
 
-        fun welcome(version: String) = Notification(message = message("notifications.welcome", version), type = Type.TRANSIENT)
+        fun welcome(version: String) = Notification(message = message("notifications.welcome", version), duration = Type.TRANSIENT)
+
+        fun error(error: SopsError) = Notification(message = message("notifications.error", error.message), duration = Type.TRANSIENT, type = NotificationType.ERROR)
 
         fun star() = Notification(
             message = """
