@@ -70,7 +70,6 @@ class SopsErrorTest {
 
         val expected = """
             Could not load tree, probably due to invalid syntax: yaml: line 5: could not find expected ':'
-
             Tree not valid for encryption: File cannot be completely empty, it must contain at least one document
         """.trimIndent()
 
