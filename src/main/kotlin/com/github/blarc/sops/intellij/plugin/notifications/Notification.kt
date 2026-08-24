@@ -7,7 +7,9 @@ import com.github.blarc.sops.intellij.plugin.settings.AppSettings
 import com.intellij.ide.browsers.BrowserLauncher
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import java.net.URI
 
 data class Notification(
@@ -27,7 +29,12 @@ data class Notification(
 
         fun welcome(version: String) = Notification(message = message("notifications.welcome", version), duration = Type.TRANSIENT)
 
-        fun error(error: SopsError) = Notification(message = message("notifications.error", error.message), duration = Type.TRANSIENT, type = NotificationType.ERROR)
+        fun error(error: SopsError, actions: Set<NotificationAction> = emptySet()) = Notification(
+            message = message("notifications.error", error.message),
+            actions = actions,
+            duration = Type.TRANSIENT,
+            type = NotificationType.ERROR
+        )
 
         fun star() = Notification(
             message = """
@@ -66,6 +73,11 @@ data class NotificationAction(val title: String, val run: (dismiss: () -> Unit) 
         fun openUrl(url: URI, title: String = message("actions.take-me-there")) = NotificationAction(title) { dismiss ->
             dismiss()
             BrowserLauncher.instance.open(url.toString());
+        }
+
+        fun openFile(project: Project, file: VirtualFile, title: String = message("actions.open-sops-config")) = NotificationAction(title) { dismiss ->
+            dismiss()
+            FileEditorManager.getInstance(project).openFile(file, true)
         }
     }
 }

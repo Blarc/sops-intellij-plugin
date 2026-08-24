@@ -54,6 +54,13 @@ class SopsErrorTest {
     }
 
     @Test
+    fun `unrelated command failures have no actions`() {
+        val error = SopsError.CommandFailed("failed to decrypt file")
+
+        assertTrue(error.getActions().isEmpty())
+    }
+
+    @Test
     fun `edit errors show concise distinct SOPS diagnostics`() {
         val output = """
             time="2026-08-21T09:24:56+02:00" level=error msg="Could not load tree, probably due to invalid syntax. Press enter to return to the editor, or Ctrl+C to exit." error="yaml: line 5: could not find expected ':'"

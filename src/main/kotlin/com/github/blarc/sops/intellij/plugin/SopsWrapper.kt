@@ -1,12 +1,10 @@
 package com.github.blarc.sops.intellij.plugin
 
 import com.github.blarc.sops.intellij.plugin.settings.AppSettings
-import com.github.blarc.sops.intellij.plugin.settings.ProjectSettings
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.process.*
 import com.intellij.execution.util.ExecUtil
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -302,10 +300,9 @@ object SopsWrapper {
         .replace("\\\\", "\\")
 
     private fun buildCommand(sopsPath: String, project: Project, cwd: String? = null): GeneralCommandLine {
-        val projectSettings = project.service<ProjectSettings>()
         val command: GeneralCommandLine = GeneralCommandLine(sopsPath)
             .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
-            .withEnvironment(projectSettings.sopsProjectEnvironment + AppSettings.instance.sopsEnvironment)
+            .withEnvironment(SopsConfigResolver.configuredSopsEnvironment(project))
             .withCharset(StandardCharsets.UTF_8)
             .withWorkDirectory(cwd)
 

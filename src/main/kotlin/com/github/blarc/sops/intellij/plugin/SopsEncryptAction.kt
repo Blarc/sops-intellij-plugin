@@ -31,7 +31,7 @@ class SopsEncryptAction : AnAction(), DumbAware {
                     fileEditorManager.openFile(file, true)
                 }
             }
-        }, { error -> sendNotification(Notification.error(error)) })
+        }, { error -> sendNotification(Notification.error(error, error.getActions(file, project)), project) })
     }
 
     override fun update(e: AnActionEvent) {

@@ -221,14 +221,12 @@ class SopsService(
     }
 
     private fun updateError(file: VirtualFile, error: SopsError) {
-//        if (error is SopsError.FileNotChanged) {
-//            clearError(file.path)
-//
-//        } else {
-//            errors[file.path] = error
-//        }
-        errors[file.path] = error
+        if (error is SopsError.FileNotChanged) {
+            clearError(file.path)
 
+        } else {
+            errors[file.path] = error
+        }
     }
 
     internal fun clearError(filePath: String) {
