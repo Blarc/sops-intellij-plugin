@@ -20,6 +20,12 @@
 
 - Decrypt the content of the last commit with the store of the file it comes from, instead of always
   decrypting it as YAML.
+- Reload the decrypted editor when a SOPS file is changed externally, while preserving metadata-only
+  updates such as `sops updatekeys` and avoiding no-op writes to Local History.
+- Show an editor warning with actions to keep local changes or load external changes when both the
+  decrypted editor and the encrypted file changed.
+- Serialize automatic editor encryptions per file and skip superseded requests, so rapid edits cannot
+  run overlapping SOPS processes or leave older plaintext encrypted last.
 
 ## [1.4.1] - 2026-04-09
 
