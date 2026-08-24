@@ -23,7 +23,28 @@ import com.intellij.ui.EditorNotifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+
+internal class SerializedEditRequests {
+    private val mutex = Mutex()
+    private val latestRequest = AtomicLong()
+
+    fun next(): Long = latestRequest.incrementAndGet()
+
+    fun isLatest(request: Long): Boolean = request == latestRequest.get()
+
+    suspend fun runIfLatest(request: Long, action: suspend () -> Unit) {
+        mutex.withLock {
+            if (isLatest(request)) {
+                action()
+            }
+        }
+    }
+}
 
 @Service(Service.Level.PROJECT)
 class SopsService(
@@ -32,6 +53,7 @@ class SopsService(
 ) {
 
     var errors: MutableMap<String, SopsError> = mutableMapOf()
+    private val editRequests = ConcurrentHashMap<String, SerializedEditRequests>()
 
     fun decrypt(
         file: VirtualFile,
@@ -106,7 +128,12 @@ class SopsService(
                     val newDecryptedText = decryptedText
                     if (newDecryptedText == null) {
                         sendNotification(
-                            Notification(message = message("notification.diff.decrypt-failed", error?.message.orEmpty())),
+                            Notification(
+                                message = message(
+                                    "notification.diff.decrypt-failed",
+                                    error?.message.orEmpty()
+                                )
+                            ),
                             project
                         )
                         onFinished(false)
@@ -125,7 +152,7 @@ class SopsService(
     fun encrypt(
         file: VirtualFile,
         inPlace: Boolean = false,
-        onSuccess: suspend (decryptedText: String) -> Unit,
+        onSuccess: suspend () -> Unit,
         onError: suspend (error: SopsError) -> Unit = {}
     ) {
         cs.launch {
@@ -145,15 +172,8 @@ class SopsService(
                 )
 
                 // Do not change the file (metadata) if the content has not changed
-                if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
-                    withContext(Dispatchers.EDT) {
-                        runWriteAction {
-                            file.writeText(originalEncryptedText.orEmpty())
-                        }
-                    }
-                    clearError(file.path)
-                    EditorNotifications.getInstance(project).updateAllNotifications()
-                    onSuccess(originalDecryptedText)
+                if (!contentChanged(newDecryptedText, originalDecryptedText, file, originalEncryptedText)) {
+                    onSuccess()
                     return@withBackgroundProgress
                 }
 
@@ -163,7 +183,7 @@ class SopsService(
                         clearError(file.path)
                         EditorNotifications.getInstance(project).updateAllNotifications()
                         AppSettings.instance.recordHit()
-                        onSuccess(it)
+                        onSuccess()
                     },
                     { error ->
                         updateError(file, error)
@@ -178,43 +198,85 @@ class SopsService(
     fun editEncrypt(
         file: VirtualFile,
         newDecryptedText: String,
-        originalDecryptedText: String?,
-        originalEncryptedText: String
+        originalDecryptedText: String,
+        originalEncryptedText: String,
+        syncedEncryptedText: String,
+        syncedDecryptedText: String? = null,
+        forceEncrypt: Boolean = false,
     ) {
+        val requests = editRequests.computeIfAbsent(file.url) { SerializedEditRequests() }
+        val request = requests.next()
         cs.launch {
-            withBackgroundProgress(project, message("background.encrypting")) {
-                if (newDecryptedText.isBlank()) {
-                    return@withBackgroundProgress
-                }
-
-                // Do not change the file (metadata) if the content has not changed
-                if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
-                    withContext(Dispatchers.EDT) {
-                        runWriteAction {
-                            file.writeText(originalEncryptedText)
-                        }
+            // Coalesce edits that accumulated while an earlier SOPS process was running.
+            requests.runIfLatest(request) {
+                withBackgroundProgress(project, message("background.encrypting")) {
+                    if (newDecryptedText.isBlank()) {
+                        return@withBackgroundProgress
                     }
-                    clearError(file.path)
-                    EditorNotifications.getInstance(project).updateAllNotifications()
-                    AppSettings.instance.recordHit()
-                    return@withBackgroundProgress
-                }
 
-                withContext(Dispatchers.IO) {
-                    SopsWrapper.edit(
-                        file, project,newDecryptedText,
-                        {
-                            clearError(file.path)
-                            EditorNotifications.getInstance(project).updateAllNotifications()
-                            AppSettings.instance.recordHit()
-                            file.refresh(true, false)
-                        },
-                        { error ->
-                            updateError(file, error)
-                            EditorNotifications.getInstance(project).updateAllNotifications()
-                            file.refresh(true, false)
-                        }
-                    )
+                    // Do not change the file (metadata) if the content has not changed
+                    if (!forceEncrypt &&
+                        !contentChanged(newDecryptedText, originalDecryptedText, file, originalEncryptedText)
+                    ) {
+                        return@withBackgroundProgress
+                    }
+
+                    // The editor already represents the latest content loaded from disk. This also covers
+                    // the case where the same change was made independently in the IDE and with the CLI.
+                    if (!forceEncrypt && syncedDecryptedText != null &&
+                        newDecryptedText.equalsIgnoreIndent(syncedDecryptedText, file.fileType, project)
+                    ) {
+                        restoreEncryptedText(file, syncedEncryptedText)
+                        clearError(file.path)
+                        EditorNotifications.getInstance(project).updateAllNotifications()
+                        return@withBackgroundProgress
+                    }
+
+                    withContext(Dispatchers.IO) {
+                        SopsWrapper.edit(
+                            file, project, newDecryptedText,
+                            {
+                                clearError(file.path)
+                                EditorNotifications.getInstance(project).updateAllNotifications()
+                                AppSettings.instance.recordHit()
+                                if (requests.isLatest(request)) {
+                                    file.refresh(true, false)
+                                }
+                            },
+                            { error ->
+                                updateError(file, error)
+                                EditorNotifications.getInstance(project).updateAllNotifications()
+                                if (requests.isLatest(request)) {
+                                    file.refresh(true, false)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun contentChanged(
+        newDecryptedText: String,
+        originalDecryptedText: String,
+        file: VirtualFile,
+        originalEncryptedText: String?
+    ): Boolean {
+        if (newDecryptedText.equalsIgnoreIndent(originalDecryptedText, file.fileType, project)) {
+            restoreEncryptedText(file, originalEncryptedText.orEmpty())
+            clearError(file.path)
+            EditorNotifications.getInstance(project).updateAllNotifications()
+            return false
+        }
+        return true
+    }
+
+    private suspend fun restoreEncryptedText(file: VirtualFile, encryptedText: String) {
+        if (readAction { file.readText() != encryptedText }) {
+            withContext(Dispatchers.EDT) {
+                runWriteAction {
+                    file.writeText(encryptedText)
                 }
             }
         }

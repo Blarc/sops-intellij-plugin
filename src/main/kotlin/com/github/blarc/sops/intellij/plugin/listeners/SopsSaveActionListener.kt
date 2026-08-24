@@ -1,8 +1,6 @@
 package com.github.blarc.sops.intellij.plugin.listeners
 
 import com.github.blarc.sops.intellij.plugin.providers.SopsEditorProvider
-import com.github.blarc.sops.intellij.plugin.services.SopsService
-import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
@@ -17,7 +15,7 @@ class SopsSaveActionListener(
 
         editors.filter { it.isValid }.forEach {
             if (it is SopsEditorProvider.SopsEditor) {
-                project.service<SopsService>().editEncrypt(it.file, it.getDecryptedText(), it.originalDecryptedText, it.originalEncryptedText)
+                it.encryptIfChanged()
             }
         }
 
