@@ -21,31 +21,55 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
         file: VirtualFile
     ) = Function { editor: FileEditor ->
         if (editor is SopsEditorProvider.SopsEditor) {
-            val error = project.service<SopsService>().errors[file.path] ?: return@Function null
-
-            if (error is SopsError.FileNotChanged) {
-                return@Function null
+            if (editor.hasExternalChangeConflict()) {
+                return@Function conflictPanel(editor)
             }
-
-            val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
-            panel.text = "<html>${StringUtil.escapeXmlEntities(error.message)
-                .replace("\r\n", "<br>")
-                .replace("\n", "<br>")}</html>"
-
-            if (error is SopsError.ExecutableNotSet || error is SopsError.ProcessNotCreated) {
-                panel.createActionLabel("Open settings") {
-                    SopsBundle.openPluginSettings(project)
-                }
-            }
-
-            panel.createActionLabel("Try again") {
-                val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
-                if (editor is SopsEditorProvider.SopsEditor) {
-                    editor.decrypt()
-                }
-            }
-            return@Function panel
+            return@Function errorPanel(project, file)
         }
         return@Function null
+    }
+
+    private fun conflictPanel(editor: SopsEditorProvider.SopsEditor): EditorNotificationPanel {
+        val panel = EditorNotificationPanel(HintUtil.WARNING_COLOR_KEY)
+        panel.text = SopsBundle.message("notification.external-change-conflict")
+        panel.createActionLabel(SopsBundle.message("actions.keep-local-changes")) {
+            editor.keepLocalChanges()
+        }
+        panel.createActionLabel(SopsBundle.message("actions.load-external-changes")) {
+            editor.loadExternalChanges()
+        }
+        return panel
+    }
+
+    private fun errorPanel(
+        project: Project,
+        file: VirtualFile
+    ): EditorNotificationPanel? {
+        val error = project.service<SopsService>().errors[file.path] ?: return null
+
+        if (error is SopsError.FileNotChanged) {
+            return null
+        }
+
+        val panel = EditorNotificationPanel(HintUtil.ERROR_COLOR_KEY)
+        panel.text = "<html>${
+            StringUtil.escapeXmlEntities(error.message)
+                .replace("\r\n", "<br>")
+                .replace("\n", "<br>")
+        }</html>"
+
+        if (error is SopsError.ExecutableNotSet || error is SopsError.ProcessNotCreated) {
+            panel.createActionLabel("Open settings") {
+                SopsBundle.openPluginSettings(project)
+            }
+        }
+
+        panel.createActionLabel("Try again") {
+            val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
+            if (editor is SopsEditorProvider.SopsEditor) {
+                editor.decrypt()
+            }
+        }
+        return panel
     }
 }
