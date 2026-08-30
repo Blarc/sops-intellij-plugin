@@ -2,78 +2,121 @@ package com.github.blarc.sops.intellij.plugin.providers
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 
 class SopsEditorContentStateTest {
     @Test
-    fun `editing and reverting keeps the original rollback baseline`() {
-        val state = SopsEditorContentState("committed encrypted content")
-        state.setRollbackBaseline("committed encrypted content", "secret: original")
+    fun `accepted editor changes do not replace rollback content`() {
+        val state = stateWithRollback()
+        val request = state.beginDecryption("encrypted edited content")
 
-        val editedRequest = state.beginDecryption("encrypted edited content")
+        val decision = state.completeDecryption(
+            request,
+            currentEncryptedText = "encrypted edited content",
+            localDecryptedText = "secret: edited",
+            externalDecryptedText = "secret: edited",
+        )
 
-        assertTrue(state.completeDecryption(editedRequest, "encrypted edited content"))
-        assertEquals("committed encrypted content", state.originalEncryptedText)
-        assertEquals("secret: original", state.originalDecryptedText)
-    }
-
-    @Test
-    fun `metadata-only external content can replace the encrypted rollback baseline`() {
-        val state = SopsEditorContentState("committed encrypted content")
-        state.setRollbackBaseline("committed encrypted content", "secret: original")
-
-        val reloadRequest = state.beginDecryption("updated keys and rotated ciphertext")
-
-        assertTrue(state.completeDecryption(reloadRequest, "updated keys and rotated ciphertext"))
-        state.updateEncryptedBaseline("updated keys and rotated ciphertext")
-        assertEquals("updated keys and rotated ciphertext", state.originalEncryptedText)
-        assertEquals("secret: original", state.originalDecryptedText)
-    }
-
-    @Test
-    fun `stale decryption cannot replace a newer external version`() {
-        val state = SopsEditorContentState("first version")
-        val firstRequest = state.beginDecryption("first version")
-        val secondRequest = state.beginDecryption("second version")
-
-        assertFalse(state.completeDecryption(firstRequest, "second version"))
-        assertTrue(state.completeDecryption(secondRequest, "second version"))
-    }
-
-    @Test
-    fun `local and external changes with different content cause a conflict`() {
+        assertEquals(ExternalChangeDecision.ACCEPT_EXTERNAL, decision)
         assertEquals(
-            ExternalChangeDecision.CONFLICT,
-            decideExternalChange(
-                hasSyncedContent = true,
-                localMatchesSynced = false,
-                externalMatchesLocal = false,
-            )
+            SopsContent("committed encrypted content", "secret: original"),
+            state.rollbackContent,
         )
     }
 
     @Test
-    fun `the same change made locally and externally does not cause a conflict`() {
+    fun `metadata-only update replaces only encrypted rollback text`() {
+        val state = stateWithRollback()
+
+        state.updateRollbackEncryptedText("updated keys and rotated ciphertext")
+
         assertEquals(
-            ExternalChangeDecision.ACCEPT_EXTERNAL,
-            decideExternalChange(
-                hasSyncedContent = true,
-                localMatchesSynced = false,
-                externalMatchesLocal = true,
-            )
+            SopsContent("updated keys and rotated ciphertext", "secret: original"),
+            state.rollbackContent,
         )
     }
 
     @Test
-    fun `external changes load automatically when there are no local changes`() {
+    fun `stale decryption is rejected`() {
+        val state = stateWithRollback()
+        val staleRequest = state.beginDecryption("first version")
+        state.beginDecryption("second version")
+
+        val decision = state.completeDecryption(
+            staleRequest,
+            currentEncryptedText = "second version",
+            localDecryptedText = "local",
+            externalDecryptedText = "stale",
+        )
+
+        assertNull(decision)
+    }
+
+    @Test
+    fun `different local and external changes cause a conflict`() {
+        val state = stateWithSyncedContent()
+        val request = state.beginDecryption("external encrypted content")
+
+        val decision = state.completeDecryption(
+            request,
+            currentEncryptedText = "external encrypted content",
+            localDecryptedText = "secret: local",
+            externalDecryptedText = "secret: external",
+        )
+
+        assertEquals(ExternalChangeDecision.CONFLICT, decision)
         assertEquals(
-            ExternalChangeDecision.ACCEPT_EXTERNAL,
-            decideExternalChange(
-                hasSyncedContent = true,
-                localMatchesSynced = true,
-                externalMatchesLocal = false,
-            )
+            SopsContent("external encrypted content", "secret: external"),
+            state.externalConflict,
+        )
+    }
+
+    @Test
+    fun `same local and external change is accepted`() {
+        val state = stateWithSyncedContent()
+        val request = state.beginDecryption("external encrypted content")
+
+        val decision = state.completeDecryption(
+            request,
+            currentEncryptedText = "external encrypted content",
+            localDecryptedText = "secret: same edit",
+            externalDecryptedText = "secret: same edit",
+        )
+
+        assertEquals(ExternalChangeDecision.ACCEPT_EXTERNAL, decision)
+        assertNull(state.externalConflict)
+    }
+
+    @Test
+    fun `external change is accepted when local content is unchanged`() {
+        val state = stateWithSyncedContent()
+        val request = state.beginDecryption("external encrypted content")
+
+        val decision = state.completeDecryption(
+            request,
+            currentEncryptedText = "external encrypted content",
+            localDecryptedText = "secret: original",
+            externalDecryptedText = "secret: external",
+        )
+
+        assertEquals(ExternalChangeDecision.ACCEPT_EXTERNAL, decision)
+        assertEquals(
+            SopsContent("external encrypted content", "secret: external"),
+            state.syncedContent,
+        )
+    }
+
+    private fun stateWithRollback() = SopsEditorContentState("committed encrypted content").apply {
+        setRollbackContent("committed encrypted content", "secret: original")
+    }
+
+    private fun stateWithSyncedContent() = stateWithRollback().apply {
+        val request = beginDecryption("committed encrypted content")
+        completeDecryption(
+            request,
+            currentEncryptedText = "committed encrypted content",
+            localDecryptedText = "",
+            externalDecryptedText = "secret: original",
         )
     }
 }
