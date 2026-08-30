@@ -20,7 +20,7 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
         project: Project,
         file: VirtualFile
     ) = Function { editor: FileEditor ->
-        if (editor is SopsEditorProvider.SopsEditor) {
+        if (editor is SopsEditor) {
             if (editor.hasExternalChangeConflict()) {
                 return@Function conflictPanel(editor)
             }
@@ -29,7 +29,7 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
         return@Function null
     }
 
-    private fun conflictPanel(editor: SopsEditorProvider.SopsEditor): EditorNotificationPanel {
+    private fun conflictPanel(editor: SopsEditor): EditorNotificationPanel {
         val panel = EditorNotificationPanel(HintUtil.WARNING_COLOR_KEY)
         panel.text = SopsBundle.message("notification.external-change-conflict")
         panel.createActionLabel(SopsBundle.message("actions.keep-local-changes")) {
@@ -66,7 +66,7 @@ class SopsEditorNotificationsProvider(private val cs: CoroutineScope) : EditorNo
 
         panel.createActionLabel("Try again") {
             val editor = FileEditorManager.getInstance(project).getSelectedEditor(file)
-            if (editor is SopsEditorProvider.SopsEditor) {
+            if (editor is SopsEditor) {
                 editor.decrypt()
             }
         }

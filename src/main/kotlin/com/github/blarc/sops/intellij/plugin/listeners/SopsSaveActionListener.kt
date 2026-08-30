@@ -1,6 +1,6 @@
 package com.github.blarc.sops.intellij.plugin.listeners
 
-import com.github.blarc.sops.intellij.plugin.providers.SopsEditorProvider
+import com.github.blarc.sops.intellij.plugin.providers.SopsEditor
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
@@ -14,7 +14,7 @@ class SopsSaveActionListener(
         val editors = FileEditorManager.getInstance(project).allEditors
 
         editors.filter { it.isValid }.forEach {
-            if (it is SopsEditorProvider.SopsEditor) {
+            if (it is SopsEditor) {
                 it.encryptIfChanged()
             }
         }
