@@ -53,12 +53,11 @@ internal class SopsEditorContentState(private val initialEncryptedText: String) 
             return null
         }
 
-        val externalContent = SopsContent(request.encryptedText, externalDecryptedText)
-        val previousSyncedContent = syncedContent
-        val hasConflict = previousSyncedContent != null &&
-            localDecryptedText != previousSyncedContent.decryptedText &&
-            localDecryptedText != externalDecryptedText
+        val lastAcceptedContent = syncedContent
+        val hasLocalChanges = lastAcceptedContent != null && localDecryptedText != lastAcceptedContent.decryptedText
+        val hasConflict = hasLocalChanges && localDecryptedText != externalDecryptedText
 
+        val externalContent = SopsContent(request.encryptedText, externalDecryptedText)
         return if (hasConflict) {
             externalConflict = externalContent
             ExternalChangeDecision.CONFLICT
@@ -73,8 +72,8 @@ internal class SopsEditorContentState(private val initialEncryptedText: String) 
         rollbackContent = SopsContent(encryptedText, decryptedText)
     }
 
-    fun updateRollbackEncryptedText(encryptedText: String) {
-        rollbackContent = rollbackContent?.copy(encryptedText = encryptedText)
+    fun updateRollbackEncryptedText(newEncryptedText: String) {
+        rollbackContent = rollbackContent?.copy(encryptedText = newEncryptedText)
     }
 
     fun encryptedRollbackText(): String = rollbackContent?.encryptedText ?: initialEncryptedText

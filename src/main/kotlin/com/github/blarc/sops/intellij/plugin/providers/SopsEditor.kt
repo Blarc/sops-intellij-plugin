@@ -102,25 +102,36 @@ class SopsEditor private constructor(
     /** Decrypts the current encrypted document and either loads it or records a conflict. */
     fun decrypt() {
         val project = editor.project ?: return
-        val encryptedText = encryptedDocument.text
-        val request = contentState.beginDecryption(encryptedText)
+        val newEncryptedText = encryptedDocument.text
+        val request = contentState.beginDecryption(newEncryptedText)
 
-        clearOutdatedConflict(project, encryptedText)
+        // Clear existing conflict if encrypted text changed
+        val existingConflict = contentState.externalConflict
+        if (existingConflict?.encryptedText != newEncryptedText) {
+            contentState.clearConflict()
+            updateNotifications(project)
+        }
+
         // Do not allow stale plaintext to be saved while this exact encrypted version is loading.
         isDecryptedTextLoaded = false
 
-        project.service<SopsService>().decrypt(file, false, { decryptedText ->
+        project.service<SopsService>().decrypt(file, false, { newDecryptedText ->
             withContext(Dispatchers.EDT) {
                 if (!contentState.isCurrent(request, encryptedDocument.text)) {
                     return@withContext
                 }
 
-                adoptEncryptedRollbackIfPlaintextMatches(encryptedText, decryptedText)
+                // If plaintext does not match - do nothing
+                // If plaintext matches and encrypted text matches - do nothing
+                // If plaintext matches and encrypted text does not match - update rollback (metadata change only)
+                adoptEncryptedRollbackIfPlaintextMatches(newEncryptedText, newDecryptedText)
+
+
                 when (contentState.completeDecryption(
                     request = request,
                     currentEncryptedText = encryptedDocument.text,
                     localDecryptedText = editor.document.text,
-                    externalDecryptedText = decryptedText,
+                    externalDecryptedText = newDecryptedText,
                 )) {
                     null -> return@withContext
                     ExternalChangeDecision.CONFLICT -> {
@@ -128,21 +139,13 @@ class SopsEditor private constructor(
                         return@withContext
                     }
                     ExternalChangeDecision.ACCEPT_EXTERNAL -> {
-                        showDecryptedText(decryptedText)
+                        showDecryptedText(newDecryptedText)
                         isDecryptedTextLoaded = true
                         revisionTracker.updateLineStatusTracker()
                     }
                 }
             }
         })
-    }
-
-    private fun clearOutdatedConflict(project: Project, encryptedText: String) {
-        val conflict = contentState.externalConflict ?: return
-        if (conflict.encryptedText != encryptedText) {
-            contentState.clearConflict()
-            updateNotifications(project)
-        }
     }
 
     private fun showDecryptedText(decryptedText: String) {
@@ -214,15 +217,16 @@ class SopsEditor private constructor(
     }
 
     private suspend fun adoptEncryptedRollbackIfPlaintextMatches(
-        encryptedText: String,
-        // Current plaintext
-        decryptedText: String
+        newEncryptedText: String,
+        newDecryptedText: String,
     ) {
         val rollbackContent = contentState.rollbackContent ?: return
+        // Do not update if encrypted text matches as well - no changes
+        if (newEncryptedText == rollbackContent.encryptedText) return
+
         val project = editor.project ?: return
-        // Current plaintext matches the original plaintext, that is the plaintext from the latest commit
-        if (decryptedText.equalsIgnoreIndent(rollbackContent.decryptedText, file.fileType, project)) {
-            contentState.updateRollbackEncryptedText(encryptedText)
+        if (newDecryptedText.equalsIgnoreIndent(rollbackContent.decryptedText, file.fileType, project)) {
+            contentState.updateRollbackEncryptedText(newEncryptedText)
         }
     }
 
