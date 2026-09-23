@@ -3,7 +3,7 @@ import org.jetbrains.changelog.Changelog
 fun properties(key: String) = project.findProperty(key).toString()
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.4.10"
+    id("org.jetbrains.kotlin.jvm") version "2.4.20"
     id("org.jetbrains.intellij.platform") version "2.19.0"
 
     // Gradle Changelog Plugin
