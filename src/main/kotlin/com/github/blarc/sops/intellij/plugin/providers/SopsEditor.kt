@@ -51,14 +51,20 @@ class SopsEditor private constructor(
         fallbackEncryptedText = contentState::encryptedRollbackText,
         isDecryptedTextLoaded = { isDecryptedTextLoaded },
         onRevisionLoaded = { revision ->
-            contentState.setRollbackContent(revision.encryptedText, revision.decryptedText)
-            if (isDecryptedTextLoaded) {
-                // If only the metadata changed (in the encrypted content) we adopt the encrypted content as the
-                // new rollback content
-                adoptEncryptedRollbackIfPlaintextMatches(
-                    encryptedDocument.text,
-                    editor.document.text,
+            val rollbackSnapshot = contentState.setRollbackContent(
+                revision.encryptedText,
+                revision.decryptedText,
+            )
+            val syncedSnapshot = contentState.syncedContent
+            if (isDecryptedTextLoaded && syncedSnapshot != null) {
+                val shouldAdoptRollbackCiphertext = shouldAdoptRollbackCiphertext(
+                    syncedSnapshot.encryptedText,
+                    syncedSnapshot.decryptedText,
+                    rollbackSnapshot,
                 )
+                if (shouldAdoptRollbackCiphertext && contentState.syncedContent == syncedSnapshot) {
+                    contentState.adoptRollbackCiphertext(rollbackSnapshot, syncedSnapshot.encryptedText)
+                }
             }
         },
     )
@@ -121,17 +127,20 @@ class SopsEditor private constructor(
                     return@withContext
                 }
 
-                // If plaintext does not match - do nothing
-                // If plaintext matches and encrypted text matches - do nothing
-                // If plaintext matches and encrypted text does not match - update rollback (metadata change only)
-                adoptEncryptedRollbackIfPlaintextMatches(newEncryptedText, newDecryptedText)
+                val rollbackSnapshot = contentState.rollbackContent
+                val shouldAdoptRollbackCiphertext = shouldAdoptRollbackCiphertext(
+                    newEncryptedText,
+                    newDecryptedText,
+                    rollbackSnapshot,
+                )
 
-
-                when (contentState.completeDecryption(
+                when (contentState.applyDecryptionResult(
                     request = request,
                     currentEncryptedText = encryptedDocument.text,
                     localDecryptedText = editor.document.text,
                     externalDecryptedText = newDecryptedText,
+                    rollbackSnapshot = rollbackSnapshot,
+                    shouldAdoptRollbackCiphertext = shouldAdoptRollbackCiphertext,
                 )) {
                     null -> return@withContext
                     ExternalChangeDecision.CONFLICT -> {
@@ -216,18 +225,15 @@ class SopsEditor private constructor(
         revisionTracker.load(isInitialLoad = false)
     }
 
-    private suspend fun adoptEncryptedRollbackIfPlaintextMatches(
+    private suspend fun shouldAdoptRollbackCiphertext(
         newEncryptedText: String,
         newDecryptedText: String,
-    ) {
-        val rollbackContent = contentState.rollbackContent ?: return
-        // Do not update if encrypted text matches as well - no changes
-        if (newEncryptedText == rollbackContent.encryptedText) return
+        rollbackSnapshot: SopsContent?,
+    ): Boolean {
+        if (rollbackSnapshot == null || newEncryptedText == rollbackSnapshot.encryptedText) return false
 
-        val project = editor.project ?: return
-        if (newDecryptedText.equalsIgnoreIndent(rollbackContent.decryptedText, file.fileType, project)) {
-            contentState.updateRollbackEncryptedText(newEncryptedText)
-        }
+        val project = editor.project ?: return false
+        return newDecryptedText.equalsIgnoreIndent(rollbackSnapshot.decryptedText, file.fileType, project)
     }
 
     private fun updateNotifications(project: Project) {

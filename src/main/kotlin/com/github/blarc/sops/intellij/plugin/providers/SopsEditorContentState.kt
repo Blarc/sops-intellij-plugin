@@ -42,15 +42,21 @@ internal class SopsEditorContentState(private val initialEncryptedText: String) 
         return request.number == latestDecryptionRequest && request.encryptedText == currentEncryptedText
     }
 
-    /** Records a current decryption result and decides whether it can replace the editor text. */
-    fun completeDecryption(
+    /** Atomically applies a current decryption result and decides whether it can replace the editor text. */
+    fun applyDecryptionResult(
         request: DecryptionRequest,
         currentEncryptedText: String,
         localDecryptedText: String,
         externalDecryptedText: String,
+        rollbackSnapshot: SopsContent? = null,
+        shouldAdoptRollbackCiphertext: Boolean = false,
     ): ExternalChangeDecision? {
         if (!isCurrent(request, currentEncryptedText)) {
             return null
+        }
+
+        if (shouldAdoptRollbackCiphertext) {
+            adoptRollbackCiphertext(rollbackSnapshot, request.encryptedText)
         }
 
         val lastAcceptedContent = syncedContent
@@ -68,12 +74,18 @@ internal class SopsEditorContentState(private val initialEncryptedText: String) 
         }
     }
 
-    fun setRollbackContent(encryptedText: String, decryptedText: String) {
-        rollbackContent = SopsContent(encryptedText, decryptedText)
+    fun setRollbackContent(encryptedText: String, decryptedText: String): SopsContent {
+        val content = SopsContent(encryptedText, decryptedText)
+        rollbackContent = content
+        return content
     }
 
-    fun updateRollbackEncryptedText(newEncryptedText: String) {
-        rollbackContent = rollbackContent?.copy(encryptedText = newEncryptedText)
+    /** Adopts ciphertext only if the rollback baseline has not changed since it was compared. */
+    fun adoptRollbackCiphertext(rollbackSnapshot: SopsContent?, newEncryptedText: String) {
+        if (rollbackSnapshot == null || rollbackContent != rollbackSnapshot) return
+        if (newEncryptedText == rollbackSnapshot.encryptedText) return
+
+        rollbackContent = rollbackSnapshot.copy(encryptedText = newEncryptedText)
     }
 
     fun encryptedRollbackText(): String = rollbackContent?.encryptedText ?: initialEncryptedText
