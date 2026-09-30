@@ -62,6 +62,7 @@ jobs:
 
       # Run tests
       - name: Run Tests
+        timeout-minutes: 15
         run: ./gradlew test
 
       # Collect Tests Result of failed tests
