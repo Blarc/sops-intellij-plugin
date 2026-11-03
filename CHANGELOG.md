@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Encrypt edited files correctly on Windows. The PowerShell editor script used `Out-File`, which writes
+  UTF-16 with BOM in Windows PowerShell 5.1, so SOPS failed with `invalid dotenv input line` and NUL
+  characters (or an equivalent YAML/JSON parse error). The script now reads stdin and writes the file
+  as UTF-8 without BOM.
+
 ## [1.5.1] - 2026-08-31
 
 ### Fixed
