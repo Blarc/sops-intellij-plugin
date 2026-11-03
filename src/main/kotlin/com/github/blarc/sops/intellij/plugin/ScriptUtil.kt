@@ -13,12 +13,18 @@ object ScriptUtil {
 
     const val INPUT_START_IDENTIFIER: String = "8aa203fd-cc7d-4e00-9c2f-af32b872e4c3"
 
+    /*
+     * Windows PowerShell 5.1 (powershell.exe) writes UTF-16LE with BOM by default (`Out-File`) and reads
+     * stdin with the OEM code page. SOPS then fails to parse the temp file ("invalid dotenv input line:
+     * \x00\r\x00"). Read stdin and write the file explicitly as UTF-8 without BOM.
+     */
     private val PWSH_SCRIPT: String = """
 		param (${'$'}file)
 		Write-Output "%s"
-		${'$'}stdin = [System.Console]::In
-		${'$'}content = ${'$'}stdin.ReadToEnd()
-		${'$'}content | Out-File "${'$'}file"
+		${'$'}utf8 = New-Object System.Text.UTF8Encoding ${'$'}false
+		${'$'}reader = New-Object System.IO.StreamReader([System.Console]::OpenStandardInput(), ${'$'}utf8)
+		${'$'}content = ${'$'}reader.ReadToEnd()
+		[System.IO.File]::WriteAllText(${'$'}file, ${'$'}content, ${'$'}utf8)
 		
 		""".trimIndent().format(INPUT_START_IDENTIFIER)
 
